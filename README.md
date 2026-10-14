@@ -30,7 +30,11 @@ Kripto uses the existing Supabase project and its `public.profiles` table: `id`,
 - All signals and My watchlist filters use the preferences saved in the profile. Returning from Profile reloads the watchlist. Login and registration continue to open Profile first.
 - Refresh signals requests new market data and reloads profile preferences. Initial loading, empty watchlists, profile failures and market failures have separate states and retry actions.
 - Market requests run concurrently with a 10-second timeout. A failed asset does not hide successful results. If a complete refresh fails, the last in-memory results remain visible with an explicit warning.
-- This step does not persist market signals between app restarts or deliver notifications.
+- Successful market snapshots are saved locally per user and restored when the Signals screen opens again. Native storage is encrypted; web storage stays in the browser. The snapshot displays its fetch time and whether it was restored from this device.
+- Saved results appear while fresh data is requested. If market requests fail, saved results remain visible with their original timestamp. A delayed cache read cannot replace a newer market response.
+- Saved snapshots are validated before use. Corrupt, unsupported or mismatched-user entries are ignored. Storage failures do not prevent live results from being displayed.
+- The cache remains available for the same account after logout and login on this device. Other accounts use separate storage keys. Watchlist preferences still load from Supabase; this does not provide offline profile editing.
+- Notifications are outside this workflow.
 
 ## Checks
 
@@ -40,4 +44,4 @@ npm run typecheck
 npx expo export --platform web
 ```
 
-Local signal caching and notifications are planned separately.
+Local notifications are planned separately.

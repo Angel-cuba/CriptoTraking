@@ -15,7 +15,7 @@ export default function SignalsScreen() {
 }
 
 function SignalsContent({ userId }: { userId: string }) {
-  const { signals, loading, error, refresh } = useSignals();
+  const { signals, loading, error, cacheError, updatedAt, fromCache, refresh } = useSignals(userId);
   const { profile, loading: profileLoading, error: profileError, reloadProfile } = useProfile(userId);
   const [filter, setFilter] = useState<'all' | 'watchlist'>('all');
   const previouslyFocused = useRef(false);
@@ -48,6 +48,14 @@ function SignalsContent({ userId }: { userId: string }) {
             </Pressable>
           ))}
         </View>
+        {updatedAt !== null ? (
+          <View style={accountStyles.card}>
+            <Text style={accountStyles.sectionTitle}>{fromCache ? 'Saved signals' : 'Market snapshot'}</Text>
+            <Text style={accountStyles.body}>Fetched {new Date(updatedAt).toLocaleString()}</Text>
+            {fromCache ? <Text style={accountStyles.body}>{loading ? 'Showing saved results while checking for updates.' : 'Showing saved results. Refresh when connected.'}</Text> : null}
+          </View>
+        ) : null}
+        {cacheError ? <Feedback message={cacheError} /> : null}
         {error ? (
           <View style={accountStyles.card}><Feedback message={error} /><ActionButton title="Retry signals" secondary disabled={loading} onPress={refresh} /></View>
         ) : null}
