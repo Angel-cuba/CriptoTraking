@@ -51,3 +51,6 @@ yarn-error.*
 .env
 .env.*
 !.env.example
+
+# Local workspace instructions
+AGENTS.md

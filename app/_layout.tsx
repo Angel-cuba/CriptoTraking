@@ -1,56 +1,43 @@
-import { useFonts } from 'expo-font';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, Text, View } from 'react-native';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/components/useColorScheme';
+import { AccountScreen, accountColors, accountStyles, Feedback } from '@/src/components/AccountScreen';
+import { ActionButton } from '@/src/components/ActionButton';
+import { AuthProvider } from '@/src/context/AuthContext';
+import { useAuth } from '@/src/hooks/useAuth';
 
-export {
-  // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
-} from 'expo-router';
-
-export const unstable_settings = {
-  // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
-};
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+export { ErrorBoundary } from 'expo-router';
+export const unstable_settings = { initialRouteName: 'index' };
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  // Expo Router uses Error Boundaries to catch errors in the navigation tree.
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
-
-  return <RootLayoutNav />;
+  return (
+    <ThemeProvider value={DefaultTheme}>
+      <AuthProvider><RootNavigator /></AuthProvider>
+      <StatusBar style="dark" />
+    </ThemeProvider>
+  );
 }
 
-function RootLayoutNav() {
-  const colorScheme = useColorScheme();
-
+function RootNavigator() {
+  const { session, loading, error, retry } = useAuth();
+  if (loading || error) {
+    return (
+      <AccountScreen centered>
+        <View style={accountStyles.card}>
+          {loading ? <><ActivityIndicator color={accountColors.primary} /><Text style={accountStyles.body}>Restoring your session…</Text></> : (
+            <><Feedback message={error} /><ActionButton title="Try again" onPress={() => void retry()} /></>
+          )}
+        </View>
+      </AccountScreen>
+    );
+  }
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-      </Stack>
-    </ThemeProvider>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Protected guard={!session}><Stack.Screen name="(auth)" /></Stack.Protected>
+      <Stack.Protected guard={!!session}><Stack.Screen name="(tabs)" /></Stack.Protected>
+    </Stack>
   );
 }
