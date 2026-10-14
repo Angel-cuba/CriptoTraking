@@ -1,0 +1,90 @@
+import { Link, useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { AccountScreen, accountColors, accountStyles, Feedback } from '@/src/components/AccountScreen';
+import { ActionButton } from '@/src/components/ActionButton';
+import { SignalCard } from '@/src/components/SignalCard';
+import { useAuth } from '@/src/hooks/useAuth';
+import { useProfile } from '@/src/hooks/useProfile';
+import { useSignals } from '@/src/hooks/useSignals';
+
+export default function SignalsScreen() {
+  const { user } = useAuth();
+  return user ? <SignalsContent key={user.id} userId={user.id} /> : null;
+}
+
+function SignalsContent({ userId }: { userId: string }) {
+  const { signals, loading, error, refresh } = useSignals();
+  const { profile, loading: profileLoading, error: profileError, reloadProfile } = useProfile(userId);
+  const [filter, setFilter] = useState<'all' | 'watchlist'>('all');
+  const previouslyFocused = useRef(false);
+
+  useFocusEffect(useCallback(() => {
+    if (previouslyFocused.current) void reloadProfile();
+    previouslyFocused.current = true;
+  }, [reloadProfile]));
+
+  const watchlist = profile?.watchlist ?? [];
+  const visible = filter === 'all' ? signals : signals.filter((signal) => watchlist.includes(signal.symbol));
+  const waitingForWatchlist = filter === 'watchlist' && profileLoading;
+  const missingWatchlist = filter === 'watchlist' && !profile;
+
+  return (
+    <AccountScreen>
+      <View style={accountStyles.gap}>
+        <View style={styles.heading}>
+          <Text style={styles.eyebrow}>MARKET OVERVIEW</Text>
+          <Text accessibilityRole="header" style={styles.title}>Market signals</Text>
+          <Text style={accountStyles.body}>SMA5 / SMA10 crossovers from closed hourly candles.</Text>
+        </View>
+        <ActionButton title="Refresh signals" loading={loading} onPress={() => { refresh(); void reloadProfile(); }} />
+        <View accessibilityRole="tablist" style={styles.filters}>
+          {(['all', 'watchlist'] as const).map((value) => (
+            <Pressable key={value} accessibilityRole="tab" accessibilityLabel={value === 'all' ? 'All signals' : 'My watchlist'}
+              accessibilityState={{ selected: filter === value }} onPress={() => setFilter(value)}
+              style={[styles.filter, filter === value && styles.selectedFilter]}>
+              <Text style={[styles.filterText, filter === value && styles.selectedText]}>{value === 'all' ? 'All signals' : 'My watchlist'}</Text>
+            </Pressable>
+          ))}
+        </View>
+        {error ? (
+          <View style={accountStyles.card}><Feedback message={error} /><ActionButton title="Retry signals" secondary disabled={loading} onPress={refresh} /></View>
+        ) : null}
+        {filter === 'watchlist' && profileError && !profileLoading ? (
+          <View style={accountStyles.card}>
+            <Feedback message={profile ? 'Your watchlist could not be refreshed. Showing your last loaded preferences.' : profileError} />
+            <ActionButton title="Retry watchlist" secondary onPress={() => void reloadProfile()} />
+          </View>
+        ) : null}
+        {(loading && signals.length === 0) || waitingForWatchlist ? (
+          <View style={accountStyles.card}><ActivityIndicator color={accountColors.primary} /><Text style={accountStyles.body}>{waitingForWatchlist ? 'Loading your watchlist…' : 'Loading market signals…'}</Text></View>
+        ) : !missingWatchlist ? (
+          <>
+            {filter === 'watchlist' && visible.length === 0 && !loading && !error ? (
+              <View style={accountStyles.card}>
+                <Text style={accountStyles.sectionTitle}>{watchlist.length === 0 ? 'Your watchlist is empty' : 'No tracked signals'}</Text>
+                <Text style={accountStyles.body}>{watchlist.length === 0 ? 'Choose the assets you want to follow in your profile.' : 'This view covers BTCUSDT, ETHUSDT and SOLUSDT. Select one of these pairs in your profile.'}</Text>
+                <Link href="/profile" style={accountStyles.link}>Manage watchlist</Link>
+              </View>
+            ) : null}
+            {visible.map((signal) => <SignalCard key={signal.symbol} signal={signal} />)}
+          </>
+        ) : null}
+        <Text style={styles.source}>Binance spot · 1h · BTC / ETH / SOL</Text>
+      </View>
+    </AccountScreen>
+  );
+}
+
+const styles = StyleSheet.create({
+  heading: { gap: 8, paddingTop: 10 },
+  eyebrow: { color: accountColors.primary, fontSize: 12, letterSpacing: 1.8, fontWeight: '700' },
+  title: { color: accountColors.text, fontSize: 30, fontWeight: '700' },
+  filters: { flexDirection: 'row', gap: 10 },
+  filter: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', padding: 12, borderWidth: 1, borderColor: accountColors.border, borderRadius: 12, backgroundColor: '#fff' },
+  selectedFilter: { borderColor: accountColors.primary, backgroundColor: '#eaf1ff' },
+  filterText: { color: accountColors.muted, fontSize: 14, fontWeight: '600' },
+  selectedText: { color: accountColors.primary },
+  source: { color: accountColors.muted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
+});

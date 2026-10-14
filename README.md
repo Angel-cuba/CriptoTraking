@@ -1,6 +1,6 @@
 # Kripto
 
-Expo SDK 57 application with email authentication and a persistent user profile.
+Expo SDK 57 application with email authentication, a persistent user profile and hourly market signals.
 
 ## Run
 
@@ -23,6 +23,15 @@ Kripto uses the existing Supabase project and its `public.profiles` table: `id`,
 - Sign out clears the session for this app installation without signing out other devices or applications.
 - Loading failures offer a retry, and sign out remains available when profile data cannot be loaded.
 
+## Market signals
+
+- The protected Signals tab displays BTCUSDT, ETHUSDT and SOLUSDT using Binance spot market candles.
+- Each signal compares SMA5 and SMA10 for the latest closed one-hour candle and its predecessor. BUY and SELL indicate a new crossover; NEUTRAL indicates no new crossover. Open candles are excluded.
+- All signals and My watchlist filters use the preferences saved in the profile. Returning from Profile reloads the watchlist. Login and registration continue to open Profile first.
+- Refresh signals requests new market data and reloads profile preferences. Initial loading, empty watchlists, profile failures and market failures have separate states and retry actions.
+- Market requests run concurrently with a 10-second timeout. A failed asset does not hide successful results. If a complete refresh fails, the last in-memory results remain visible with an explicit warning.
+- This step does not persist market signals between app restarts or deliver notifications.
+
 ## Checks
 
 ```bash
@@ -31,4 +40,4 @@ npm run typecheck
 npx expo export --platform web
 ```
 
-Market data, signals and notifications are outside this account workflow.
+Local signal caching and notifications are planned separately.

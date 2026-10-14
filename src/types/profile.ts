@@ -1,6 +1,7 @@
 export const RISK_PROFILES = ['conservative', 'balanced', 'aggressive'] as const;
 export const SUPPORTED_ASSETS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT'] as const;
 
+export type SupportedAsset = typeof SUPPORTED_ASSETS[number];
 export type RiskProfile = typeof RISK_PROFILES[number];
 export type Profile = {
   id: string;
