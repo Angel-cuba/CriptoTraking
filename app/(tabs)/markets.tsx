@@ -24,7 +24,8 @@ const SORT_OPTIONS = [
 type Sort = (typeof SORT_OPTIONS)[number]["value"];
 
 export default function MarketsScreen() {
-  const { snapshot, loading, error, reload } = useMarketCatalog();
+  const { snapshot, loading, error, stale, paused, retryAt, reload } = useMarketCatalog();
+  const refreshUnavailable = loading || paused || retryAt !== null;
   const [search, setSearch] = useState("");
   const [quote, setQuote] = useState("USDT");
   const [sort, setSort] = useState<Sort>("name");
@@ -80,11 +81,11 @@ export default function MarketsScreen() {
           </View>
           <Pressable
             onPress={() => void reload()}
-            disabled={loading}
-            style={styles.iconButton}
+            disabled={refreshUnavailable}
+            style={[styles.iconButton, refreshUnavailable && styles.disabledControl]}
             accessibilityRole="button"
             accessibilityLabel="Refresh markets"
-            accessibilityState={{ disabled: loading, busy: loading }}
+            accessibilityState={{ disabled: refreshUnavailable, busy: loading }}
           >
             {loading ? (
               <ActivityIndicator color="#2375AE" />
@@ -194,7 +195,7 @@ export default function MarketsScreen() {
           </Text>
           {snapshot && (
             <Text style={styles.caption}>
-              {error ? "Last received" : "Received"}{" "}
+              {error || stale ? "Last received" : "Received"}{" "}
               {new Date(snapshot.receivedAt).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
@@ -203,14 +204,30 @@ export default function MarketsScreen() {
           )}
         </View>
 
+        <View style={styles.status} accessibilityLiveRegion="polite">
+          <Text style={styles.caption}>
+            {paused
+              ? "Updates paused while the app is in the background."
+              : retryAt !== null
+                ? "Automatic updates are waiting for the market provider."
+                : loading
+                  ? "Updating market prices…"
+                  : "Updates every 60 seconds while the app is active."}
+          </Text>
+          {stale && snapshot ? (
+            <Text style={styles.staleText}>Prices may be outdated. Last received data is shown.</Text>
+          ) : null}
+        </View>
+
         {error && (
           <View style={styles.error} accessibilityRole="alert">
             <Text style={styles.errorText}>{error}</Text>
             <Pressable
               onPress={() => void reload()}
-              disabled={loading}
-              style={styles.retry}
+              disabled={refreshUnavailable}
+              style={[styles.retry, refreshUnavailable && styles.disabledControl]}
               accessibilityRole="button"
+              accessibilityState={{ disabled: refreshUnavailable }}
             >
               <Text style={styles.retryLabel}>Retry</Text>
             </Pressable>
@@ -364,6 +381,9 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   caption: { fontSize: 12, color: "#69717B" },
+  status: { paddingHorizontal: 20, paddingBottom: 12, gap: 5 },
+  staleText: { fontSize: 12, color: "#9A6700", lineHeight: 18 },
+  disabledControl: { opacity: 0.45 },
   columns: {
     flexDirection: "row",
     gap: 12,

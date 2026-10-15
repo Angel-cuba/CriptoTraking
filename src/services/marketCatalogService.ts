@@ -9,8 +9,35 @@ const CATALOG_TTL_MS = 5 * 60 * 1000;
 
 let cachedCatalog: MarketSymbol[] | null = null;
 let catalogExpiresAt = 0;
+let retryAfter = 0;
+
+export class MarketRateLimitError extends Error {
+  constructor(readonly retryAt: number) {
+    super('Market provider rate limit reached.');
+    this.name = 'MarketRateLimitError';
+  }
+}
+
+function ensureRequestAllowed(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new Error('Market request cancelled.');
+  if (Date.now() < retryAfter) throw new MarketRateLimitError(retryAfter);
+}
+
+function getRetryTime(response: Response): number {
+  const now = Date.now();
+  const header = response.headers.get('Retry-After')?.trim();
+  if (header && /^\d+(?:\.\d+)?$/.test(header)) {
+    const retryAt = Math.ceil(now + Number(header) * 1000);
+    if (Number.isSafeInteger(retryAt)) return Math.max(now + 1000, retryAt);
+  } else if (header) {
+    const retryAt = Date.parse(header);
+    if (Number.isFinite(retryAt) && retryAt > now) return retryAt;
+  }
+  return now + (response.status === 418 ? 120_000 : 60_000);
+}
 
 export async function getMarketSnapshot(signal?: AbortSignal): Promise<MarketSnapshot> {
+  ensureRequestAllowed(signal);
   const catalog = await getMarketCatalog(signal);
   const data = await fetchMarketData('/api/v3/ticker/24hr?symbolStatus=TRADING', signal);
   const tickers = parseMarketTickers(data);
@@ -33,19 +60,27 @@ async function getMarketCatalog(signal?: AbortSignal): Promise<MarketSymbol[]> {
     '/api/v3/exchangeInfo?permissions=SPOT&symbolStatus=TRADING&showPermissionSets=false',
     signal,
   );
+  ensureRequestAllowed(signal);
   cachedCatalog = parseMarketCatalog(data);
   catalogExpiresAt = Date.now() + CATALOG_TTL_MS;
   return cachedCatalog;
 }
 
 async function fetchMarketData(path: string, signal?: AbortSignal): Promise<unknown> {
+  ensureRequestAllowed(signal);
   const response = await fetch(`${BINANCE_BASE_URL}${path}`, { signal });
 
+  if (response.status === 429 || response.status === 418) {
+    retryAfter = Math.max(retryAfter, getRetryTime(response));
+    throw new MarketRateLimitError(retryAfter);
+  }
   if (!response.ok) {
     throw new Error(`Binance request failed: ${response.status}`);
   }
 
-  return response.json();
+  const data: unknown = await response.json();
+  ensureRequestAllowed(signal);
+  return data;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
