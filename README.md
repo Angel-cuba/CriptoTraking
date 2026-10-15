@@ -34,7 +34,16 @@ Kripto uses the existing Supabase project and its `public.profiles` table: `id`,
 - Saved results appear while fresh data is requested. If market requests fail, saved results remain visible with their original timestamp. A delayed cache read cannot replace a newer market response.
 - Saved snapshots are validated before use. Corrupt, unsupported or mismatched-user entries are ignored. Storage failures do not prevent live results from being displayed.
 - The cache remains available for the same account after logout and login on this device. Other accounts use separate storage keys. Watchlist preferences still load from Supabase; this does not provide offline profile editing.
-- Notifications are outside this workflow.
+
+## Local signal alerts
+
+- Enable or disable alerts in Profile. This opt-in preference is local to the current account and device. The app asks for OS permission only after Enable alerts is pressed.
+- Alerts are evaluated after fresh market data arrives while Signals is open and the app is active. Restored cached data never triggers an alert. There is no background monitoring or remote push delivery.
+- The first observation for each asset is silent. Later, a newer closed candle with BUY or SELL may notify only if its symbol is in the loaded watchlist. NEUTRAL, repeated candles and older responses are ignored.
+- Observation timestamps are stored separately from the display cache and processed serially per account. Partial fetches retain the baseline for missing assets. Enabling alerts starts a new silent baseline.
+- Observations are recorded before dispatch to prevent duplicate retries. A storage failure prevents dispatch and allows a later refresh to retry. A delivery failure can miss an alert: the candle remains recorded and is not replayed automatically. Both failures are reported without blocking the market feed.
+- Permission denial leaves the market feed usable. Account changes, sign out and disabling alerts suppress pending delivery and clear this account's signal notifications. Web displays availability information without calling native notification APIs.
+- Use an updated development build after adding the native notifications module. Lint, TypeScript and JS bundle export do not prove OS banner delivery; verify permission, Android channel behavior and presentation on an iOS/Android device before claiming native verification.
 
 ## Checks
 
@@ -44,4 +53,4 @@ npm run typecheck
 npx expo export --platform web
 ```
 
-Local notifications are planned separately.
+A dynamic market catalog is planned separately.

@@ -5,6 +5,7 @@ import type { User } from '@supabase/supabase-js';
 import { AccountScreen, accountColors, accountStyles, Feedback } from '@/src/components/AccountScreen';
 import { ActionButton } from '@/src/components/ActionButton';
 import { FormField } from '@/src/components/FormField';
+import { NotificationSettings } from '@/src/components/NotificationSettings';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useProfile } from '@/src/hooks/useProfile';
 import { supabaseClient } from '@/src/lib/supabase';
@@ -67,6 +68,7 @@ function ProfileContent({ user }: { user: User }) {
         ) : (
           <View style={accountStyles.card}><Feedback message={error || 'Your profile is unavailable.'} /><ActionButton title="Retry loading profile" onPress={() => void reloadProfile()} disabled={signingOut} /></View>
         )}
+        <NotificationSettings disabled={signingOut} />
         <View style={accountStyles.card}>
           <Text style={accountStyles.sectionTitle}>Session</Text>
           <Text style={accountStyles.body}>You will stay signed in on this device until you sign out.</Text>

@@ -1,10 +1,11 @@
 import { Link, useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AccountScreen, accountColors, accountStyles, Feedback } from '@/src/components/AccountScreen';
 import { ActionButton } from '@/src/components/ActionButton';
 import { SignalCard } from '@/src/components/SignalCard';
+import { useSignalNotifications } from '@/src/context/SignalNotificationContext';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useProfile } from '@/src/hooks/useProfile';
 import { useSignals } from '@/src/hooks/useSignals';
@@ -17,13 +18,23 @@ export default function SignalsScreen() {
 function SignalsContent({ userId }: { userId: string }) {
   const { signals, loading, error, cacheError, updatedAt, fromCache, refresh } = useSignals(userId);
   const { profile, loading: profileLoading, error: profileError, reloadProfile } = useProfile(userId);
+  const { processSignals, ready: notificationsReady, error: notificationError } = useSignalNotifications();
+  const focused = useRef(false);
+  const isFocused = useCallback(() => focused.current, []);
   const [filter, setFilter] = useState<'all' | 'watchlist'>('all');
   const previouslyFocused = useRef(false);
 
   useFocusEffect(useCallback(() => {
+    focused.current = true;
     if (previouslyFocused.current) void reloadProfile();
     previouslyFocused.current = true;
+    return () => { focused.current = false; };
   }, [reloadProfile]));
+
+  useEffect(() => {
+    if (!notificationsReady || fromCache || loading || updatedAt === null || profileLoading || profileError || !profile) return;
+    void processSignals(signals, profile.watchlist, isFocused);
+  }, [notificationsReady, fromCache, loading, updatedAt, profileLoading, profileError, profile, signals, processSignals, isFocused]);
 
   const watchlist = profile?.watchlist ?? [];
   const visible = filter === 'all' ? signals : signals.filter((signal) => watchlist.includes(signal.symbol));
@@ -55,6 +66,7 @@ function SignalsContent({ userId }: { userId: string }) {
             {fromCache ? <Text style={accountStyles.body}>{loading ? 'Showing saved results while checking for updates.' : 'Showing saved results. Refresh when connected.'}</Text> : null}
           </View>
         ) : null}
+        {notificationError ? <Feedback message={notificationError} /> : null}
         {cacheError ? <Feedback message={cacheError} /> : null}
         {error ? (
           <View style={accountStyles.card}><Feedback message={error} /><ActionButton title="Retry signals" secondary disabled={loading} onPress={refresh} /></View>
