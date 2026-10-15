@@ -23,3 +23,15 @@ export type MarketSnapshot = {
   assets: MarketAsset[];
   receivedAt: number;
 };
+
+export type MarketPriceObservation = {
+  price: number;
+  sourceCloseTime: number;
+  receivedAt: number;
+};
+
+export type MarketMovement = {
+  changePercent: number;
+  previousReceivedAt: number;
+  receivedAt: number;
+};

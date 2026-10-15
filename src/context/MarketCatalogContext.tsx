@@ -2,7 +2,8 @@ import { createContext, useCallback, useEffect, useMemo, useRef, useState, type 
 import { AppState, type AppStateStatus } from 'react-native';
 
 import { getMarketSnapshot, MarketRateLimitError } from '@/src/services/marketCatalogService';
-import type { MarketSnapshot } from '@/src/types/market';
+import { compareMarketPrices } from '@/src/services/marketMovementService';
+import type { MarketMovement, MarketPriceObservation, MarketSnapshot } from '@/src/types/market';
 
 const REFRESH_INTERVAL_MS = 60_000;
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -12,15 +13,17 @@ const MAX_TIMER_DELAY_MS = 2_147_483_647;
 type MarketState = {
   snapshot: MarketSnapshot | null; loading: boolean; error: string | null;
   stale: boolean; paused: boolean; retryAt: number | null;
+  movements: ReadonlyMap<string, MarketMovement>;
 };
 type PendingRequest = { controller: AbortController; timeout: ReturnType<typeof setTimeout> };
 type MarketCatalogState = MarketState & { reload: () => void };
 export const MarketCatalogContext = createContext<MarketCatalogState | undefined>(undefined);
 
 export function MarketCatalogProvider({ children }: PropsWithChildren) {
-  const [state, setState] = useState<MarketState>({
+  const [state, setState] = useState<MarketState>(() => ({
     snapshot: null, loading: true, error: null, stale: false, paused: false, retryAt: null,
-  });
+    movements: new Map(),
+  }));
   const refresh = useRef<() => void>(() => {});
   const reload = useCallback(() => refresh.current(), []);
 
@@ -33,6 +36,7 @@ export function MarketCatalogProvider({ children }: PropsWithChildren) {
     let cooldownTimer: ReturnType<typeof setTimeout> | undefined;
     let receivedAt = 0;
     let retryAt = 0;
+    let observations = new Map<string, MarketPriceObservation>();
 
     function cancelRequest() {
       const previous = request;
@@ -87,7 +91,9 @@ export function MarketCatalogProvider({ children }: PropsWithChildren) {
       void getMarketSnapshot(controller.signal).then((snapshot) => {
         if (!current()) return;
         receivedAt = snapshot.receivedAt;
-        setState((previous) => ({ ...previous, snapshot, loading: false, error: null, retryAt: null }));
+        const comparison = compareMarketPrices(snapshot, observations);
+        observations = comparison.observations;
+        setState((previous) => ({ ...previous, snapshot, movements: comparison.movements, loading: false, error: null, retryAt: null }));
         updateFreshness();
       }).catch((failure: unknown) => {
         if (!current()) return;

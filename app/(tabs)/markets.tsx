@@ -24,7 +24,7 @@ const SORT_OPTIONS = [
 type Sort = (typeof SORT_OPTIONS)[number]["value"];
 
 export default function MarketsScreen() {
-  const { snapshot, loading, error, stale, paused, retryAt, reload } = useMarketCatalog();
+  const { snapshot, movements, loading, error, stale, paused, retryAt, reload } = useMarketCatalog();
   const refreshUnavailable = loading || paused || retryAt !== null;
   const [search, setSearch] = useState("");
   const [quote, setQuote] = useState("USDT");
@@ -217,6 +217,7 @@ export default function MarketsScreen() {
           {stale && snapshot ? (
             <Text style={styles.staleText}>Prices may be outdated. Last received data is shown.</Text>
           ) : null}
+          <Text style={styles.caption}>Price arrows compare updates up to 2 minutes apart. A dash means no recent comparison.</Text>
         </View>
 
         {error && (
@@ -236,15 +237,16 @@ export default function MarketsScreen() {
 
         <View style={styles.columns}>
           <Text style={[styles.caption, styles.assetColumn]}>Asset</Text>
-          <Text style={[styles.caption, styles.priceColumn]}>Price</Text>
+          <Text style={[styles.caption, styles.priceColumn]}>Price / update</Text>
           <Text style={[styles.caption, styles.changeColumn]}>24h</Text>
         </View>
 
         <FlatList
           style={styles.marketList}
           data={markets}
+          extraData={stale || paused ? null : movements}
           keyExtractor={(asset) => asset.symbol}
-          renderItem={({ item }) => <MarketRow asset={item} />}
+          renderItem={({ item }) => <MarketRow asset={item} movement={stale || paused ? undefined : movements.get(item.symbol)} />}
           getItemLayout={(_data, index) => ({
             length: MARKET_ROW_HEIGHT,
             offset: MARKET_ROW_HEIGHT * index,

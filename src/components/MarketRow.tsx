@@ -1,9 +1,9 @@
 import { memo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import type { MarketAsset } from "@/src/types/market";
+import type { MarketAsset, MarketMovement } from "@/src/types/market";
 
-export const MARKET_ROW_HEIGHT = 80;
+export const MARKET_ROW_HEIGHT = 96;
 
 function formatPrice(price: number): string {
   if (price < 0.000001) return price.toExponential(2);
@@ -13,7 +13,13 @@ function formatPrice(price: number): string {
   });
 }
 
-export const MarketRow = memo(function MarketRow({ asset }: { asset: MarketAsset }) {
+function formatMovement(change: number): string {
+  if (change === 0) return "= 0.00%";
+  if (Math.abs(change) < 0.01) return `${change > 0 ? "↑" : "↓"} <0.01%`;
+  return `${change > 0 ? "↑ +" : "↓ -"}${Math.abs(change).toFixed(2)}%`;
+}
+
+export const MarketRow = memo(function MarketRow({ asset, movement }: { asset: MarketAsset; movement?: MarketMovement }) {
   const { ticker } = asset;
   const change = ticker?.changePercent24h;
   const changeColor =
@@ -51,6 +57,17 @@ export const MarketRow = memo(function MarketRow({ asset }: { asset: MarketAsset
           {ticker ? formatPrice(ticker.price) : "Unavailable"}
         </Text>
         <Text style={styles.quote}>{asset.quoteAsset}</Text>
+        <Text
+          style={[styles.movement, { color: !movement || movement.changePercent === 0 ? "#69717B" : movement.changePercent > 0 ? "#137A50" : "#BF3344" }]}
+          accessibilityLabel={movement
+            ? `${asset.symbol}: ${movement.changePercent > 0 ? "up" : movement.changePercent < 0 ? "down" : "unchanged"}, ${Math.abs(movement.changePercent) > 0 && Math.abs(movement.changePercent) < 0.01 ? "less than 0.01" : Math.abs(movement.changePercent).toFixed(2)} percent since the previous update.`
+            : `${asset.symbol}: no recent price comparison available.`}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
+          {movement ? formatMovement(movement.changePercent) : "—"}
+        </Text>
       </View>
       <Text
         style={[styles.change, { color: changeColor }]}
@@ -87,6 +104,7 @@ const styles = StyleSheet.create({
     color: "#20262D",
     fontVariant: ["tabular-nums"],
   },
+  movement: { fontSize: 11, fontWeight: "600", fontVariant: ["tabular-nums"] },
   change: {
     width: 82,
     textAlign: "right",
