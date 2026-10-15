@@ -1,0 +1,97 @@
+import { memo } from "react";
+import { StyleSheet, Text, View } from "react-native";
+
+import type { MarketAsset } from "@/src/types/market";
+
+export const MARKET_ROW_HEIGHT = 80;
+
+function formatPrice(price: number): string {
+  if (price < 0.000001) return price.toExponential(2);
+  return price.toLocaleString("en-US", {
+    minimumFractionDigits: price >= 1 ? 2 : 0,
+    maximumFractionDigits: price >= 1 ? 2 : 8,
+  });
+}
+
+export const MarketRow = memo(function MarketRow({ asset }: { asset: MarketAsset }) {
+  const { ticker } = asset;
+  const change = ticker?.changePercent24h;
+  const changeColor =
+    change === undefined || change === 0
+      ? "#69717B"
+      : change > 0
+        ? "#137A50"
+        : "#BF3344";
+
+  return (
+    <View style={styles.row}>
+      <View style={styles.asset}>
+        <Text
+          style={[
+            styles.symbol,
+            asset.baseAsset.length > 8 && styles.longSymbol,
+          ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+        >
+          {asset.baseAsset}
+        </Text>
+        <Text style={styles.quote} numberOfLines={1}>
+          {asset.baseAsset}/{asset.quoteAsset}
+        </Text>
+      </View>
+      <View style={styles.price}>
+        <Text
+          style={styles.amount}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
+          {ticker ? formatPrice(ticker.price) : "Unavailable"}
+        </Text>
+        <Text style={styles.quote}>{asset.quoteAsset}</Text>
+      </View>
+      <Text
+        style={[styles.change, { color: changeColor }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+      >
+        {change === undefined
+          ? "N/A"
+          : `${change > 0 ? "+" : ""}${change.toFixed(2)}%`}
+      </Text>
+    </View>
+  );
+});
+
+const styles = StyleSheet.create({
+  row: {
+    height: MARKET_ROW_HEIGHT,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#E5E8EB",
+  },
+  asset: { flex: 1, minWidth: 0, gap: 6 },
+  symbol: { fontSize: 16, fontWeight: "600", color: "#20262D" },
+  longSymbol: { fontSize: 12 },
+  quote: { fontSize: 11, color: "#69717B" },
+  price: { flex: 1, minWidth: 0, alignItems: "flex-end", gap: 6 },
+  amount: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#20262D",
+    fontVariant: ["tabular-nums"],
+  },
+  change: {
+    width: 82,
+    textAlign: "right",
+    fontSize: 13,
+    fontWeight: "600",
+    fontVariant: ["tabular-nums"],
+  },
+});

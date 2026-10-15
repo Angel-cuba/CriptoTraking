@@ -13,6 +13,9 @@ export default function TabLayout() {
         <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color }) => (
           <SymbolView name={{ ios: 'person.crop.circle', android: 'account_circle', web: 'account_circle' }} tintColor={color} size={26} />
         ) }} />
+        <Tabs.Screen name="markets" options={{ title: 'Markets', tabBarIcon: ({ color }) => (
+          <SymbolView name={{ ios: 'chart.bar.xaxis', android: 'bar_chart', web: 'bar_chart' }} tintColor={color} size={26} />
+        ) }} />
         <Tabs.Screen name="signals" options={{ title: 'Signals', tabBarIcon: ({ color }) => (
           <SymbolView name={{ ios: 'waveform.path.ecg', android: 'monitoring', web: 'monitoring' }} tintColor={color} size={26} />
         ) }} />
