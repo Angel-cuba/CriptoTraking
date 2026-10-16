@@ -1,22 +1,98 @@
-import { calculateSignal, type SignalResult } from '@/src/api/signalApi';
-import { getBinanceData } from '@/src/services/marketService';
-import { SUPPORTED_ASSETS, type SupportedAsset } from '@/src/types/profile';
+import { calculateSignal, type SignalResult } from "@/src/api/signalApi";
+import {
+  BinanceRateLimitError,
+  getBinanceData,
+} from "@/src/services/marketService";
 
-export type AssetSignal = SignalResult & { symbol: SupportedAsset };
-export type SignalBatch = { signals: AssetSignal[]; failedSymbols: SupportedAsset[] };
+export type AssetSignal = SignalResult & { symbol: string; checkedAt?: number };
+export type SignalBatch = {
+  signals: AssetSignal[];
+  failures: Record<string, string>;
+};
+const BATCH_SIZE = 3;
 
-export async function getAssetSignal(symbol: SupportedAsset, signal?: AbortSignal): Promise<AssetSignal> {
+export async function getAssetSignal(
+  symbol: string,
+  signal?: AbortSignal,
+): Promise<AssetSignal> {
   const candles = await getBinanceData(symbol, signal);
-  return { symbol, ...calculateSignal(candles) };
+  return { symbol, ...calculateSignal(candles), checkedAt: Date.now() };
 }
 
-export async function getSignals(signal?: AbortSignal): Promise<SignalBatch> {
-  const results = await Promise.allSettled(SUPPORTED_ASSETS.map((symbol) => getAssetSignal(symbol, signal)));
-  if (signal?.aborted) throw new Error('Signal request cancelled.');
-  const batch: SignalBatch = { signals: [], failedSymbols: [] };
-  results.forEach((result, index) => {
-    if (result.status === 'fulfilled') batch.signals.push(result.value);
-    else batch.failedSymbols.push(SUPPORTED_ASSETS[index]);
-  });
-  return batch;
+export async function getSignals(
+  symbols: readonly string[],
+  signal: AbortSignal,
+): Promise<SignalBatch> {
+  const requested = [...new Set(symbols)].sort();
+  const result: SignalBatch = { signals: [], failures: {} };
+  for (let offset = 0; offset < requested.length; offset += BATCH_SIZE) {
+    if (signal.aborted) throw new Error("Signal request cancelled.");
+    const batch = requested.slice(offset, offset + BATCH_SIZE);
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    signal.addEventListener("abort", abort, { once: true });
+    let timedOut = false;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      abort();
+    }, 15_000);
+    const interrupted = new Promise<never>((_resolve, reject) => {
+      controller.signal.addEventListener(
+        "abort",
+        () => reject(new Error("Request timed out. Retry this pair.")),
+        { once: true },
+      );
+    });
+    let rateLimited = false;
+    const readings = new Map<string, AssetSignal>();
+    const failures: Record<string, string> = {};
+    try {
+      await Promise.race([
+        Promise.all(
+          batch.map(async (symbol) => {
+            try {
+              const reading = await getAssetSignal(
+                symbol,
+                controller.signal,
+              );
+              if (!controller.signal.aborted) readings.set(symbol, reading);
+            } catch (failure) {
+              if (controller.signal.aborted) return;
+              failures[symbol] =
+                failure instanceof Error
+                  ? failure.message
+                  : "Hourly reading unavailable.";
+              if (failure instanceof BinanceRateLimitError) rateLimited = true;
+            }
+          }),
+        ),
+        interrupted,
+      ]);
+      if (signal.aborted) throw new Error("Signal request cancelled.");
+    } catch (failure) {
+      if (signal.aborted) throw new Error("Signal request cancelled.");
+      for (const symbol of batch) {
+        if (!readings.has(symbol) && !failures[symbol]) {
+          failures[symbol] =
+            failure instanceof Error
+              ? failure.message
+              : "Hourly reading unavailable.";
+        }
+      }
+    } finally {
+      clearTimeout(timeout);
+      signal.removeEventListener("abort", abort);
+    }
+    result.signals.push(...readings.values());
+    Object.assign(result.failures, failures);
+    if (rateLimited || timedOut) {
+      for (const symbol of requested.slice(offset + BATCH_SIZE))
+        result.failures[symbol] = rateLimited
+          ? "Provider limit reached. Try again later."
+          : "Earlier requests timed out. Refresh to check this pair.";
+      break;
+    }
+  }
+  if (signal.aborted) throw new Error("Signal request cancelled.");
+  return result;
 }

@@ -1,53 +1,190 @@
-import { useAppTheme, useThemeStyles } from '@/src/context/ThemeContext';
-import type { ThemeColors } from '@/src/lib/theme';
-import { StyleSheet, Text, View } from 'react-native';
-import { useAccountStyles } from '@/src/components/AccountScreen';
-import { AssetAvatar } from './AssetAvatar';
-import type { AssetSignal } from '@/src/services/signalService';
+import { AssetAvatar } from "@/src/components/AssetAvatar";
+import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
+import type { ThemeColors } from "@/src/lib/theme";
+import type { AssetSignal } from "@/src/services/signalService";
+import type { MarketSymbol } from "@/src/types/market";
+import { SymbolView } from "expo-symbols";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
+const labels = {
+  BUY: "Bullish crossover",
+  SELL: "Bearish crossover",
+  NEUTRAL: "No new crossover",
+};
+const formatAverage = (value: number) =>
+  value < 0.0000001
+    ? value.toExponential(4)
+    : value.toLocaleString("en-US", { maximumSignificantDigits: 8 });
 
-
-export function SignalCard({ signal }: { signal: AssetSignal }) {
-  const { colors: accountColors } = useAppTheme();
+export function SignalCard({
+  symbol,
+  asset,
+  signal,
+  failure,
+  loading,
+  cached,
+  expanded,
+  onToggle,
+}: {
+  symbol: string;
+  asset?: MarketSymbol;
+  signal?: AssetSignal;
+  failure?: string;
+  loading: boolean;
+  cached: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const { colors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
-  const accountStyles = useAccountStyles();
-  const signalColors = {
-    BUY: { foreground: accountColors.success, background: accountColors.successSoft },
-    SELL: { foreground: accountColors.danger, background: accountColors.dangerSoft },
-    NEUTRAL: { foreground: accountColors.accent, background: accountColors.elevated },
-  };
-  const color = signalColors[signal.type];
+  const pair = asset ? asset.baseAsset + "/" + asset.quoteAsset : symbol;
+  const color =
+    signal?.type === "BUY"
+      ? colors.success
+      : signal?.type === "SELL"
+        ? colors.danger
+        : colors.muted;
   return (
-    <View style={accountStyles.card}>
-      <View style={styles.header}>
-        <AssetAvatar symbol={signal.symbol.replace(/USDT$/, '')} />
-        <View style={styles.symbolGroup}>
-          <Text style={styles.symbol} numberOfLines={1}>{signal.symbol.replace('USDT', '')}</Text>
-          <Text style={accountStyles.body}>{signal.symbol}</Text>
+    <View style={styles.card}>
+      <Pressable
+        style={styles.summary}
+        disabled={!signal}
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityLabel={
+          pair +
+          ", " +
+          (signal ? labels[signal.type] : "Reading unavailable") +
+          ", details"
+        }
+        accessibilityState={{ expanded, disabled: !signal }}
+      >
+        <AssetAvatar symbol={asset?.baseAsset ?? symbol} size={36} />
+        <View style={styles.identity}>
+          <Text style={styles.pair} numberOfLines={2}>
+            {pair}
+          </Text>
+          <Text style={[styles.status, { color }]}>
+            {signal
+              ? labels[signal.type]
+              : loading
+                ? "Checking…"
+                : "Reading unavailable"}
+          </Text>
         </View>
-        <View style={[styles.badge, { backgroundColor: color.background }]}>
-          <Text style={[styles.badgeText, { color: color.foreground }]}>{signal.type}</Text>
+        {loading ? (
+          <ActivityIndicator
+            color={colors.primary}
+            accessibilityLabel={"Checking " + pair}
+          />
+        ) : signal ? (
+          <SymbolView
+            name={{
+              ios: expanded ? "chevron.up" : "chevron.down",
+              android: expanded ? "expand_less" : "expand_more",
+              web: expanded ? "expand_less" : "expand_more",
+            }}
+            tintColor={colors.muted}
+            size={18}
+          />
+        ) : null}
+      </Pressable>
+      {failure ? (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {failure}
+        </Text>
+      ) : null}
+      {signal ? (
+        <>
+          <Text style={styles.caption}>
+            Closed candle · {new Date(signal.timestamp).toLocaleString()}
+          </Text>
+          <Text style={[styles.caption, cached && { color: colors.primary }]}>
+            {cached ? "Saved reading" : "Last checked"} ·{" "}
+            {signal.checkedAt
+              ? new Date(signal.checkedAt).toLocaleString()
+              : "Check time unavailable"}
+          </Text>
+        </>
+      ) : null}
+      {expanded && signal ? (
+        <View style={styles.details}>
+          <Text style={styles.caption}>{signal.reason}</Text>
+          <View style={styles.averages}>
+            {[
+              { label: "SMA5", value: signal.sma5 },
+              { label: "SMA10", value: signal.sma10 },
+            ].map((average) => (
+              <View key={average.label} style={styles.metric}>
+                <Text style={styles.caption}>
+                  {average.label}
+                  {asset ? " · " + asset.quoteAsset : ""}
+                </Text>
+                <Text
+                  style={styles.value}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                >
+                  {formatAverage(average.value)}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
-      </View>
-      <Text style={accountStyles.body}>{signal.reason}</Text>
-      <View style={styles.averages}>
-        <View style={styles.metric}><Text style={styles.metricLabel}>SMA5 · USDT</Text><Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{signal.sma5.toFixed(2)}</Text></View>
-        <View style={styles.metric}><Text style={styles.metricLabel}>SMA10 · USDT</Text><Text style={styles.metricValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{signal.sma10.toFixed(2)}</Text></View>
-      </View>
-      <Text style={styles.timestamp}>Candle closed {new Date(signal.timestamp).toLocaleString()}</Text>
+      ) : null}
     </View>
   );
 }
 
-const createStyles = (accountColors: ThemeColors) => StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  symbolGroup: { gap: 2, flex: 1, minWidth: 0 },
-  symbol: { color: accountColors.text, fontSize: 23, fontWeight: '700' },
-  badge: { borderRadius: 12, paddingVertical: 7, paddingHorizontal: 11 },
-  badgeText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
-  averages: { flexDirection: 'row', gap: 16 },
-  metric: { flex: 1, gap: 6, minWidth: 0, padding: 14, borderRadius: 14, backgroundColor: accountColors.background },
-  metricLabel: { color: accountColors.muted, fontSize: 12 },
-  metricValue: { color: accountColors.text, fontSize: 19, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  timestamp: { color: accountColors.muted, fontSize: 12, lineHeight: 18 },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    card: {
+      padding: 18,
+      marginHorizontal: 20,
+      marginBottom: 14,
+      gap: 10,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    summary: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      minHeight: 64,
+    },
+    identity: { flex: 1, minWidth: 0, gap: 6 },
+    pair: { color: colors.text, fontSize: 16, fontWeight: "700" },
+    status: { fontSize: 13, fontWeight: "600" },
+    caption: { color: colors.muted, fontSize: 12, lineHeight: 18 },
+    error: { color: colors.danger, fontSize: 12, lineHeight: 18 },
+    details: {
+      gap: 14,
+      paddingTop: 10,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    averages: { flexDirection: "row", gap: 12 },
+    metric: {
+      flex: 1,
+      minWidth: 0,
+      gap: 8,
+      padding: 12,
+      borderRadius: 14,
+      backgroundColor: colors.background,
+    },
+    value: {
+      color: colors.text,
+      fontSize: 17,
+      fontWeight: "600",
+      fontVariant: ["tabular-nums"],
+    },
+  });

@@ -1,5 +1,9 @@
-import Storage from 'expo-sqlite/kv-store';
-import { isThemeMode, THEME_STORAGE_KEY, type ThemeMode } from '@/src/lib/theme';
+import {
+  isThemeMode,
+  THEME_STORAGE_KEY,
+  type ThemeMode,
+} from "@/src/lib/theme";
+import Storage from "expo-sqlite/kv-store";
 
 let pending: Promise<unknown> = Promise.resolve();
 
@@ -18,7 +22,7 @@ export function loadTheme(): Promise<ThemeMode | null> {
 
 export function saveTheme(mode: ThemeMode): Promise<void> {
   return serialize(() => {
-    if (!isThemeMode(mode)) throw new Error('Invalid appearance preference.');
+    if (!isThemeMode(mode)) throw new Error("Invalid appearance preference.");
     return Storage.setItem(THEME_STORAGE_KEY, mode);
   });
 }

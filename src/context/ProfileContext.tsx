@@ -1,7 +1,18 @@
-import { createContext, useCallback, useEffect, useMemo, useRef, useState, type PropsWithChildren } from 'react';
+import {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PropsWithChildren,
+} from "react";
 
-import { getOrCreateProfile, updateProfile } from '@/src/services/profileService';
-import type { Profile, ProfileUpdate } from '@/src/types/profile';
+import {
+  getOrCreateProfile,
+  updateProfile,
+} from "@/src/services/profileService";
+import type { Profile, ProfileUpdate } from "@/src/types/profile";
 
 type ProfileState = {
   profile: Profile | null;
@@ -13,9 +24,14 @@ type ProfileState = {
   toggleWatchlist: (symbol: string) => Promise<boolean>;
 };
 
-export const ProfileContext = createContext<ProfileState | undefined>(undefined);
+export const ProfileContext = createContext<ProfileState | undefined>(
+  undefined,
+);
 
-export function ProfileProvider({ userId, children }: PropsWithChildren<{ userId: string }>) {
+export function ProfileProvider({
+  userId,
+  children,
+}: PropsWithChildren<{ userId: string }>) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -38,7 +54,9 @@ export function ProfileProvider({ userId, children }: PropsWithChildren<{ userId
       setProfile(result);
     } catch {
       if (active.current && request.current === version) {
-        setError('Unable to load your profile. Check your connection and try again.');
+        setError(
+          "Unable to load your profile. Check your connection and try again.",
+        );
       }
     } finally {
       if (active.current && request.current === version) {
@@ -60,43 +78,69 @@ export function ProfileProvider({ userId, children }: PropsWithChildren<{ userId
     };
   }, [reloadProfile]);
 
-  const saveProfile = useCallback(async (changes: ProfileUpdate): Promise<boolean> => {
-    if (!active.current || !currentProfile.current || busy.current) return false;
-    busy.current = true;
-    const version = ++request.current;
-    setSaving(true);
-    setError(null);
-    try {
-      const result = await updateProfile(userId, changes);
-      if (!active.current || request.current !== version) return false;
-      currentProfile.current = result;
-      setProfile(result);
-      return true;
-    } catch {
-      if (active.current && request.current === version) {
-        setError('Your changes could not be saved. Please try again.');
+  const saveProfile = useCallback(
+    async (changes: ProfileUpdate): Promise<boolean> => {
+      if (!active.current || !currentProfile.current || busy.current)
+        return false;
+      busy.current = true;
+      const version = ++request.current;
+      setSaving(true);
+      setError(null);
+      try {
+        const result = await updateProfile(userId, changes);
+        if (!active.current || request.current !== version) return false;
+        currentProfile.current = result;
+        setProfile(result);
+        return true;
+      } catch {
+        if (active.current && request.current === version) {
+          setError("Your changes could not be saved. Please try again.");
+        }
+        return false;
+      } finally {
+        if (active.current && request.current === version) {
+          busy.current = false;
+          setSaving(false);
+        }
       }
-      return false;
-    } finally {
-      if (active.current && request.current === version) {
-        busy.current = false;
-        setSaving(false);
-      }
-    }
-  }, [userId]);
+    },
+    [userId],
+  );
 
-  const toggleWatchlist = useCallback((symbol: string): Promise<boolean> => {
-    const current = currentProfile.current;
-    if (!current) return Promise.resolve(false);
-    const watchlist = current.watchlist.includes(symbol)
-      ? current.watchlist.filter((item) => item !== symbol)
-      : [...current.watchlist, symbol];
-    return saveProfile({ watchlist });
-  }, [saveProfile]);
+  const toggleWatchlist = useCallback(
+    (symbol: string): Promise<boolean> => {
+      const current = currentProfile.current;
+      if (!current) return Promise.resolve(false);
+      const watchlist = current.watchlist.includes(symbol)
+        ? current.watchlist.filter((item) => item !== symbol)
+        : [...current.watchlist, symbol];
+      return saveProfile({ watchlist });
+    },
+    [saveProfile],
+  );
 
-  const value = useMemo(() => ({
-    profile, loading, saving, error, reloadProfile, saveProfile, toggleWatchlist,
-  }), [profile, loading, saving, error, reloadProfile, saveProfile, toggleWatchlist]);
+  const value = useMemo(
+    () => ({
+      profile,
+      loading,
+      saving,
+      error,
+      reloadProfile,
+      saveProfile,
+      toggleWatchlist,
+    }),
+    [
+      profile,
+      loading,
+      saving,
+      error,
+      reloadProfile,
+      saveProfile,
+      toggleWatchlist,
+    ],
+  );
 
-  return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
+  return (
+    <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>
+  );
 }

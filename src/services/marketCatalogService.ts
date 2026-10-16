@@ -2,9 +2,9 @@ import type {
   MarketSnapshot,
   MarketSymbol,
   MarketTicker,
-} from '@/src/types/market';
+} from "@/src/types/market";
 
-const BINANCE_BASE_URL = 'https://api.binance.com';
+const BINANCE_BASE_URL = "https://api.binance.com";
 const CATALOG_TTL_MS = 5 * 60 * 1000;
 
 let cachedCatalog: MarketSymbol[] | null = null;
@@ -13,19 +13,19 @@ let retryAfter = 0;
 
 export class MarketRateLimitError extends Error {
   constructor(readonly retryAt: number) {
-    super('Market provider rate limit reached.');
-    this.name = 'MarketRateLimitError';
+    super("Market provider rate limit reached.");
+    this.name = "MarketRateLimitError";
   }
 }
 
 function ensureRequestAllowed(signal?: AbortSignal): void {
-  if (signal?.aborted) throw new Error('Market request cancelled.');
+  if (signal?.aborted) throw new Error("Market request cancelled.");
   if (Date.now() < retryAfter) throw new MarketRateLimitError(retryAfter);
 }
 
 function getRetryTime(response: Response): number {
   const now = Date.now();
-  const header = response.headers.get('Retry-After')?.trim();
+  const header = response.headers.get("Retry-After")?.trim();
   if (header && /^\d+(?:\.\d+)?$/.test(header)) {
     const retryAt = Math.ceil(now + Number(header) * 1000);
     if (Number.isSafeInteger(retryAt)) return Math.max(now + 1000, retryAt);
@@ -36,10 +36,15 @@ function getRetryTime(response: Response): number {
   return now + (response.status === 418 ? 120_000 : 60_000);
 }
 
-export async function getMarketSnapshot(signal?: AbortSignal): Promise<MarketSnapshot> {
+export async function getMarketSnapshot(
+  signal?: AbortSignal,
+): Promise<MarketSnapshot> {
   ensureRequestAllowed(signal);
   const catalog = await getMarketCatalog(signal);
-  const data = await fetchMarketData('/api/v3/ticker/24hr?symbolStatus=TRADING', signal);
+  const data = await fetchMarketData(
+    "/api/v3/ticker/24hr?symbolStatus=TRADING",
+    signal,
+  );
   const tickers = parseMarketTickers(data);
 
   return {
@@ -57,7 +62,7 @@ async function getMarketCatalog(signal?: AbortSignal): Promise<MarketSymbol[]> {
   }
 
   const data = await fetchMarketData(
-    '/api/v3/exchangeInfo?permissions=SPOT&symbolStatus=TRADING&showPermissionSets=false',
+    "/api/v3/exchangeInfo?permissions=SPOT&symbolStatus=TRADING&showPermissionSets=false",
     signal,
   );
   ensureRequestAllowed(signal);
@@ -66,7 +71,10 @@ async function getMarketCatalog(signal?: AbortSignal): Promise<MarketSymbol[]> {
   return cachedCatalog;
 }
 
-async function fetchMarketData(path: string, signal?: AbortSignal): Promise<unknown> {
+async function fetchMarketData(
+  path: string,
+  signal?: AbortSignal,
+): Promise<unknown> {
   ensureRequestAllowed(signal);
   const response = await fetch(`${BINANCE_BASE_URL}${path}`, { signal });
 
@@ -84,15 +92,17 @@ async function fetchMarketData(path: string, signal?: AbortSignal): Promise<unkn
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isAssetName(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0 && value.trim() === value;
+  return (
+    typeof value === "string" && value.length > 0 && value.trim() === value
+  );
 }
 
 function parseDecimal(value: unknown): number {
-  if (typeof value !== 'string' || !/^-?\d+(?:\.\d+)?$/.test(value)) {
+  if (typeof value !== "string" || !/^-?\d+(?:\.\d+)?$/.test(value)) {
     return NaN;
   }
 
@@ -101,7 +111,7 @@ function parseDecimal(value: unknown): number {
 
 export function parseMarketCatalog(data: unknown): MarketSymbol[] {
   if (!isRecord(data) || !Array.isArray(data.symbols)) {
-    throw new Error('Invalid market catalog response.');
+    throw new Error("Invalid market catalog response.");
   }
 
   const symbols = new Map<string, MarketSymbol>();
@@ -109,7 +119,7 @@ export function parseMarketCatalog(data: unknown): MarketSymbol[] {
   for (const item of data.symbols) {
     if (
       !isRecord(item) ||
-      item.status !== 'TRADING' ||
+      item.status !== "TRADING" ||
       item.isSpotTradingAllowed !== true ||
       !isAssetName(item.symbol) ||
       !isAssetName(item.baseAsset) ||
@@ -131,7 +141,7 @@ export function parseMarketCatalog(data: unknown): MarketSymbol[] {
 
 export function parseMarketTickers(data: unknown): Map<string, MarketTicker> {
   if (!Array.isArray(data)) {
-    throw new Error('Invalid market ticker response.');
+    throw new Error("Invalid market ticker response.");
   }
 
   const tickers = new Map<string, MarketTicker>();
@@ -146,14 +156,26 @@ export function parseMarketTickers(data: unknown): Map<string, MarketTicker> {
     const volume24h = parseDecimal(item.volume);
     const quoteVolume24h = parseDecimal(item.quoteVolume);
     const sourceCloseTime = item.closeTime;
-    const numbers = [price, changePercent24h, high24h, low24h, volume24h, quoteVolume24h];
+    const numbers = [
+      price,
+      changePercent24h,
+      high24h,
+      low24h,
+      volume24h,
+      quoteVolume24h,
+    ];
 
     if (
       !numbers.every(Number.isFinite) ||
-      price <= 0 || high24h <= 0 || low24h <= 0 ||
-      high24h < low24h || volume24h < 0 || quoteVolume24h < 0 ||
-      typeof sourceCloseTime !== 'number' ||
-      !Number.isSafeInteger(sourceCloseTime) || sourceCloseTime <= 0
+      price <= 0 ||
+      high24h <= 0 ||
+      low24h <= 0 ||
+      high24h < low24h ||
+      volume24h < 0 ||
+      quoteVolume24h < 0 ||
+      typeof sourceCloseTime !== "number" ||
+      !Number.isSafeInteger(sourceCloseTime) ||
+      sourceCloseTime <= 0
     ) {
       continue;
     }

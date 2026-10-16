@@ -1,6 +1,6 @@
-import { ScrollViewStyleReset } from 'expo-router/html';
-import type { ReactNode } from 'react';
-import { THEME_STORAGE_KEY, themeColors } from '@/src/lib/theme';
+import { THEME_STORAGE_KEY, themeColors } from "@/src/lib/theme";
+import { ScrollViewStyleReset } from "expo-router/html";
+import type { ReactNode } from "react";
 
 // This file is web-only and used to configure the root HTML for every
 // web page during static rendering.
@@ -13,7 +13,10 @@ export default function Root({ children }: { children: ReactNode }) {
         <meta charSet="utf-8" />
         <meta name="theme-color" content="#10131b" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, shrink-to-fit=no"
+        />
 
         {/*
           Disable body scrolling on web. This makes ScrollView components work closer to how they do on native.

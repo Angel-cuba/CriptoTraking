@@ -1,5 +1,5 @@
-import { useAppTheme, useThemeStyles } from '@/src/context/ThemeContext';
-import type { ThemeColors } from '@/src/lib/theme';
+import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
+import type { ThemeColors } from "@/src/lib/theme";
 import { SymbolView } from "expo-symbols";
 import {
   FlatList,
@@ -91,47 +91,55 @@ export function MarketOptionsModal({
   );
 }
 
-const createStyles = (accountColors: ThemeColors) => StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: "flex-end",
-    alignItems: "center",
-    backgroundColor: accountColors.overlay,
-  },
-  sheet: {
-    width: "100%",
-    maxWidth: 600,
-    maxHeight: "75%",
-    borderWidth: 1, borderColor: accountColors.border, overflow: "hidden",
-    backgroundColor: accountColors.surface,
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingLeft: 20,
-    paddingRight: 8,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: accountColors.border,
-  },
-  title: { flex: 1, fontSize: 18, fontWeight: "600", color: accountColors.text },
-  close: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  option: {
-    minHeight: 52,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  selected: { backgroundColor: accountColors.primarySoft },
-  label: { flex: 1, fontSize: 16, color: accountColors.text },
-});
+const createStyles = (accountColors: ThemeColors) =>
+  StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      justifyContent: "flex-end",
+      alignItems: "center",
+      backgroundColor: accountColors.overlay,
+    },
+    sheet: {
+      width: "100%",
+      maxWidth: 600,
+      maxHeight: "75%",
+      borderWidth: 1,
+      borderColor: accountColors.border,
+      overflow: "hidden",
+      backgroundColor: accountColors.surface,
+      borderTopLeftRadius: 26,
+      borderTopRightRadius: 26,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingLeft: 20,
+      paddingRight: 8,
+      paddingVertical: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: accountColors.border,
+    },
+    title: {
+      flex: 1,
+      fontSize: 18,
+      fontWeight: "600",
+      color: accountColors.text,
+    },
+    close: {
+      width: 44,
+      height: 44,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    option: {
+      minHeight: 52,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+    },
+    selected: { backgroundColor: accountColors.primarySoft },
+    label: { flex: 1, fontSize: 16, color: accountColors.text },
+  });

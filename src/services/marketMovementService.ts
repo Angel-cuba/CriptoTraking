@@ -2,7 +2,7 @@ import type {
   MarketMovement,
   MarketPriceObservation,
   MarketSnapshot,
-} from '@/src/types/market';
+} from "@/src/types/market";
 
 const MAX_COMPARISON_GAP_MS = 120_000;
 
@@ -18,11 +18,13 @@ export function compareMarketPrices(
     const { ticker } = asset;
     // Missing or repeated tickers must not move the reference.
     if (before) observations.set(asset.symbol, before);
-    if (!ticker || (before && ticker.sourceCloseTime <= before.sourceCloseTime)) continue;
+    if (!ticker || (before && ticker.sourceCloseTime <= before.sourceCloseTime))
+      continue;
 
     const elapsed = before ? snapshot.receivedAt - before.receivedAt : 0;
     if (before && elapsed > 0 && elapsed <= MAX_COMPARISON_GAP_MS) {
-      const changePercent = ((ticker.price - before.price) / before.price) * 100;
+      const changePercent =
+        ((ticker.price - before.price) / before.price) * 100;
       if (Number.isFinite(changePercent)) {
         movements.set(asset.symbol, {
           changePercent,

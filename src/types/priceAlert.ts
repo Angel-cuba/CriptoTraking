@@ -17,7 +17,15 @@ export type PriceAlertState = {
   lastEventAt: number | null;
 };
 
-export type PriceAlertNotificationStatus = 'pending' | 'scheduled' | 'permission-denied' | 'disabled' | 'failed' | 'unsupported' | 'skipped' | 'unknown';
+export type PriceAlertNotificationStatus =
+  | "pending"
+  | "scheduled"
+  | "permission-denied"
+  | "disabled"
+  | "failed"
+  | "unsupported"
+  | "skipped"
+  | "unknown";
 
 export type PriceAlertEvent = {
   id: string;
