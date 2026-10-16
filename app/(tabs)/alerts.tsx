@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PriceAlertRow } from '@/src/components/PriceAlertRow';
@@ -10,6 +10,7 @@ import { useMarketCatalog } from '@/src/hooks/useMarketCatalog';
 import { usePriceAlerts } from '@/src/hooks/usePriceAlerts';
 import { useProfile } from '@/src/hooks/useProfile';
 import type { ThemeColors } from '@/src/lib/theme';
+import { DEFAULT_PRICE_ALERT_SETTINGS } from '@/src/services/priceAlertService';
 
 const FILTERS = [
   { value: 'all', label: 'All' },
@@ -20,7 +21,7 @@ const FILTERS = [
 export default function AlertsScreen() {
   const { colors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
-  const { events, loading, error, retry } = usePriceAlerts();
+  const { events, loading, error, enabled, pendingEnabled, savingPreference, setEnabled, retry } = usePriceAlerts();
   const market = useMarketCatalog();
   const { profile, loading: profileLoading, saving, error: profileError, reloadProfile } = useProfile();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['value']>('all');
@@ -32,6 +33,8 @@ export default function AlertsScreen() {
   let status = 'Price data current';
   if (error) status = 'Alert storage unavailable';
   else if (loading) status = 'Loading alert history';
+  else if (savingPreference) status = 'Saving alert preference';
+  else if (enabled === false || pendingEnabled !== null) status = 'Price alerts paused';
   else if (!profile) status = profileLoading ? 'Loading watchlist' : 'Watchlist unavailable';
   else if (profile.watchlist.length === 0) status = 'No followed pairs';
   else if (market.paused) status = 'Updates paused';
@@ -46,9 +49,15 @@ export default function AlertsScreen() {
   else if (!profile && !profileLoading) emptyTitle = 'Watchlist unavailable';
   else if (profile?.watchlist.length === 0) emptyTitle = 'No followed pairs';
   const initialLoading = loading || (profileLoading && !profile && events.length === 0);
+  const monitoring = enabled === true && pendingEnabled === null;
+  const preferenceStatus = pendingEnabled !== null
+    ? savingPreference ? 'Saving preference…' : pendingEnabled ? 'Enable not saved' : 'Paused for this session; pause not saved'
+    : enabled === null ? loading ? 'Loading preference…' : 'Preference unavailable'
+      : enabled ? 'Enabled on this device' : 'Paused on this device';
+  const preferenceDisabled = loading || savingPreference || enabled === null;
 
   const failures = [
-    { key: 'alerts', message: error, retry, disabled: loading, label: 'Retry alert storage' },
+    { key: 'alerts', message: error, retry, disabled: loading || savingPreference, label: 'Retry alert storage' },
     { key: 'markets', message: market.error, retry: market.reload,
       disabled: market.loading || market.paused || market.retryAt !== null, label: 'Retry market update' },
     { key: 'profile', message: profileError, retry: () => void reloadProfile(),
@@ -82,6 +91,30 @@ export default function AlertsScreen() {
           initialNumToRender={8}
           ListHeaderComponent={
             <View style={styles.listHeader}>
+              <View style={styles.monitoringCard}>
+                <View style={styles.monitoringHeader}>
+                  <View style={styles.monitoringCopy}>
+                    <Text style={styles.status}>Watchlist alerts</Text>
+                    <Text style={styles.caption} accessibilityLiveRegion="polite">{preferenceStatus}</Text>
+                  </View>
+                  {savingPreference ? <ActivityIndicator color={colors.primary} accessibilityLabel="Saving alert preference" /> : null}
+                  <View style={styles.toggle}>
+                    <Switch value={monitoring} onValueChange={setEnabled} disabled={preferenceDisabled}
+                      accessibilityLabel="Watchlist price alerts"
+                      accessibilityHint="Monitor your followed pairs while Kripto is active. Pausing keeps your history."
+                      trackColor={{ false: colors.muted, true: colors.action }}
+                      thumbColor={monitoring ? colors.onPrimary : colors.surface}
+                      ios_backgroundColor={colors.muted}
+                      {...(Platform.OS === 'web' ? { activeThumbColor: colors.onPrimary } : {})}
+                      hitSlop={6} style={styles.switchControl} />
+                  </View>
+                </View>
+                <View style={styles.rules}>
+                  <Text style={styles.rule}>Threshold ±{DEFAULT_PRICE_ALERT_SETTINGS.thresholdPercent}%</Text>
+                  <Text style={styles.rule}>{DEFAULT_PRICE_ALERT_SETTINGS.cooldownMs / 60_000} min between alerts per pair</Text>
+                </View>
+                <Text style={styles.caption}>Checks run while Kripto is active. Pausing keeps your history.</Text>
+              </View>
               <View style={styles.summary}>
                 <Text style={styles.status} accessibilityLiveRegion="polite">{status}</Text>
                 {market.snapshot ? (
@@ -123,7 +156,9 @@ export default function AlertsScreen() {
                   ) : profile?.watchlist.length === 0 ? (
                     <Link href="/markets" style={styles.marketLink}>Browse markets</Link>
                   ) : !error && profile ? (
-                    <Text style={styles.emptyDescription}>New movements from your watchlist appear here while Kripto is active.</Text>
+                    <Text style={styles.emptyDescription}>{monitoring
+                      ? 'New movements from your watchlist appear here while Kripto is active.'
+                      : 'Enable watchlist alerts to monitor new price movements.'}</Text>
                   ) : null}
                 </>
               )}
@@ -152,6 +187,13 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   list: { flex: 1 },
   listContent: { flexGrow: 1, paddingBottom: 152 },
   listHeader: { paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
+  monitoringCard: { padding: 18, gap: 12, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  monitoringHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  monitoringCopy: { flex: 1, gap: 5 },
+  toggle: { minWidth: 56, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  switchControl: { width: 52, height: 32 },
+  rules: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  rule: { fontSize: 12, lineHeight: 18, color: colors.primary, backgroundColor: colors.primarySoft, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
   summary: { padding: 18, gap: 6, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   status: { fontSize: 15, fontWeight: '600', color: colors.text },
   error: { padding: 16, borderRadius: 16, backgroundColor: colors.dangerSoft, gap: 4 },

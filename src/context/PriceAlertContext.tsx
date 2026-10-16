@@ -10,6 +10,10 @@ type PriceAlertContextValue = {
   events: PriceAlertEvent[];
   loading: boolean;
   error: string | null;
+  enabled: boolean | null;
+  pendingEnabled: boolean | null;
+  savingPreference: boolean;
+  setEnabled: (enabled: boolean) => void;
   retry: () => void;
 };
 
@@ -20,6 +24,10 @@ export function PriceAlertProvider({ userId, children }: { userId: string; child
   const [events, setEvents] = useState<PriceAlertEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [enabled, setSavedEnabled] = useState<boolean | null>(null);
+  const [pendingEnabled, setPendingEnabled] = useState<boolean | null>(null);
+  const [savingPreference, setSavingPreference] = useState(false);
+  const requestedPreference = useRef<{ enabled: boolean } | null>(null);
   const saved = useRef<PriceAlertHistory | null>(null);
   const queue = useRef(Promise.resolve());
   const active = useRef(false);
@@ -39,32 +47,49 @@ export function PriceAlertProvider({ userId, children }: { userId: string; child
     const currentSession = () => active.current && version === generation.current;
     queue.current = queue.current.then(async () => {
       if (!currentSession()) return;
+      let preference: { enabled: boolean } | null = null;
       try {
         if (!saved.current) {
           const history = await loadPriceAlertHistory(userId);
           if (!currentSession()) return;
           saved.current = resetPriceAlertHistory(history);
           setEvents(saved.current.events);
+          setSavedEnabled(saved.current.enabled);
           setError(null);
         }
         const currentRevision = revision.current;
-        const current = resetPriceAlertHistory(saved.current, resetAll.current ? undefined : resetSymbols.current);
+        let current = resetPriceAlertHistory(saved.current, resetAll.current ? undefined : resetSymbols.current);
+        preference = requestedPreference.current;
+        if (preference) {
+          setSavingPreference(true);
+          current = { ...current, enabled: preference.enabled };
+        }
         const next = update(current) ?? current;
         if (next !== saved.current) {
           await savePriceAlertHistory(next);
           if (!currentSession()) return;
           saved.current = next;
           setEvents(next.events);
+          setSavedEnabled(next.enabled);
           setError(null);
         }
         if (currentRevision === revision.current) {
           resetAll.current = false;
           resetSymbols.current.clear();
         }
+        if (preference && requestedPreference.current === preference) {
+          requestedPreference.current = null;
+          setPendingEnabled(null);
+          // Only quotes received after confirmation can establish a new baseline.
+          revision.current++;
+          latestSnapshot.current = null;
+        }
       } catch (failure) {
         if (currentSession()) setError(failure instanceof Error ? failure.message : "Unable to save price alerts.");
       } finally {
         if (currentSession()) setLoading(false);
+        if (currentSession() && preference &&
+          (requestedPreference.current === null || requestedPreference.current === preference)) setSavingPreference(false);
       }
     });
   }, [userId]);
@@ -97,7 +122,8 @@ export function PriceAlertProvider({ userId, children }: { userId: string; child
     paused.current = false;
     latestSnapshot.current = snapshot;
     enqueue((history) => {
-      if (paused.current || currentRevision !== revision.current || !watchlist.current) return null;
+      if (paused.current || currentRevision !== revision.current || !watchlist.current ||
+        !history.enabled || requestedPreference.current !== null) return null;
       return applyPriceAlertSnapshot(history, watchlist.current, snapshot, Date.now());
     });
   }, [enqueue]);
@@ -110,12 +136,25 @@ export function PriceAlertProvider({ userId, children }: { userId: string; child
     enqueue(() => null);
   }, [enqueue]);
 
+  const setEnabled = useCallback((next: boolean) => {
+    if (!active.current || !saved.current) return;
+    requestedPreference.current = { enabled: next };
+    setPendingEnabled(next);
+    setSavingPreference(true);
+    revision.current++;
+    resetAll.current = true;
+    latestSnapshot.current = null;
+    enqueue(() => null);
+  }, [enqueue]);
+
   const retry = useCallback(() => {
-    if (latestSnapshot.current && !paused.current) processSnapshot(latestSnapshot.current);
+    if (requestedPreference.current !== null) enqueue(() => null);
+    else if (saved.current?.enabled && latestSnapshot.current && !paused.current) processSnapshot(latestSnapshot.current);
     else enqueue(() => null);
   }, [enqueue, processSnapshot]);
 
-  const value = useMemo(() => ({ events, loading, error, retry }), [events, loading, error, retry]);
+  const value = useMemo(() => ({ events, loading, error, enabled, pendingEnabled, savingPreference, setEnabled, retry }),
+    [events, loading, error, enabled, pendingEnabled, savingPreference, setEnabled, retry]);
 
   return (
     <PriceAlertContext.Provider value={value}>

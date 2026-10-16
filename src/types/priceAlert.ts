@@ -48,8 +48,9 @@ export type PriceAlertResult = {
 };
 
 export type PriceAlertHistory = {
-  version: 1;
+  version: 2;
   userId: string;
+  enabled: boolean;
   states: PriceAlertState[];
   events: PriceAlertEvent[];
 };

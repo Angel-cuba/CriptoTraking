@@ -5,7 +5,7 @@ import { DEFAULT_PRICE_ALERT_SETTINGS, MAX_PRICE_OBSERVATION_AGE_MS, evaluatePri
 export const MAX_PRICE_ALERT_EVENTS = 100;
 
 export function createPriceAlertHistory(userId: string): PriceAlertHistory {
-  return { version: 1, userId, states: [], events: [] };
+  return { version: 2, userId, enabled: true, states: [], events: [] };
 }
 
 export function resetPriceAlertHistory(history: PriceAlertHistory, symbols?: Set<string>): PriceAlertHistory {
@@ -24,6 +24,7 @@ export function applyPriceAlertSnapshot(
   snapshot: MarketSnapshot,
   now: number,
 ): PriceAlertHistory {
+  if (!history.enabled) return history;
   if (!Number.isFinite(now) || !Number.isFinite(snapshot.receivedAt) ||
     now < snapshot.receivedAt || now - snapshot.receivedAt >= MAX_PRICE_OBSERVATION_AGE_MS) return history;
   const watched = new Set(watchlist);
@@ -81,9 +82,10 @@ const validObservation = (value: MarketPriceObservation | null) => value === nul
 
 export function parsePriceAlertHistory(stored: string | null, userId: string): PriceAlertHistory {
   if (stored === null) return createPriceAlertHistory(userId);
-  const history = JSON.parse(stored) as PriceAlertHistory;
+  const history = JSON.parse(stored) as Omit<PriceAlertHistory, "version" | "enabled"> & { version: 1 | 2; enabled?: boolean };
   if (
-    !history || history.version !== 1 || history.userId !== userId ||
+    !history || (history.version !== 1 && history.version !== 2) || history.userId !== userId ||
+    (history.version === 2 && typeof history.enabled !== "boolean") ||
     !Array.isArray(history.states) || !Array.isArray(history.events) ||
     history.events.length > MAX_PRICE_ALERT_EVENTS ||
     !history.states.every((state) => state && state.userId === userId &&
@@ -102,5 +104,5 @@ export function parsePriceAlertHistory(stored: string | null, userId: string): P
     new Set(history.states.map((state) => state.symbol)).size !== history.states.length ||
     new Set(history.events.map((event) => event.id)).size !== history.events.length
   ) throw new Error("Stored price alert history is invalid. Existing data has not been replaced.");
-  return history;
+  return { ...history, version: 2, enabled: history.version === 1 || history.enabled === true };
 }
