@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { SymbolView } from "expo-symbols";
 import {
   ActivityIndicator,
@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MarketOptionsModal } from "@/src/components/MarketOptionsModal";
 import { MarketRow, MARKET_ROW_HEIGHT } from "@/src/components/MarketRow";
 import { useMarketCatalog } from "@/src/hooks/useMarketCatalog";
+import { useProfile } from "@/src/hooks/useProfile";
 
 const SORT_OPTIONS = [
   { value: "name", label: "Asset A-Z" },
@@ -25,11 +26,18 @@ type Sort = (typeof SORT_OPTIONS)[number]["value"];
 
 export default function MarketsScreen() {
   const { snapshot, movements, loading, error, stale, paused, retryAt, reload } = useMarketCatalog();
+  const { profile, loading: profileLoading, saving, error: profileError, reloadProfile, toggleWatchlist } = useProfile();
+  const watchlistDisabled = profileLoading || saving || !profile;
+  const watched = useMemo(() => new Set(profile?.watchlist ?? []), [profile?.watchlist]);
+  const toggle = useCallback((symbol: string) => { void toggleWatchlist(symbol); }, [toggleWatchlist]);
+  const rowState = useMemo(() => ({ movements: stale || paused ? null : movements, watched, watchlistDisabled }),
+    [movements, stale, paused, watched, watchlistDisabled]);
   const refreshUnavailable = loading || paused || retryAt !== null;
   const [search, setSearch] = useState("");
   const [quote, setQuote] = useState("USDT");
   const [sort, setSort] = useState<Sort>("name");
   const [menu, setMenu] = useState<"quote" | "sort" | null>(null);
+  const [watchlistOnly, setWatchlistOnly] = useState(false);
 
   const quotes = useMemo(
     () =>
@@ -41,6 +49,7 @@ export default function MarketsScreen() {
     const query = search.toUpperCase().replace(/[\s/_-]/g, "");
     const filtered = (snapshot?.assets ?? []).filter(
       (asset) =>
+        (!watchlistOnly || watched.has(asset.symbol)) &&
         (quote === "ALL" || asset.quoteAsset === quote) &&
         asset.symbol.toUpperCase().includes(query),
     );
@@ -54,7 +63,7 @@ export default function MarketsScreen() {
       const difference = b.ticker.changePercent24h - a.ticker.changePercent24h;
       return (sort === "gainers" ? difference : -difference) || alphabetical;
     });
-  }, [snapshot, search, quote, sort]);
+  }, [snapshot, search, quote, sort, watchlistOnly, watched]);
 
   const options =
     menu === "quote"
@@ -187,6 +196,24 @@ export default function MarketsScreen() {
           </Pressable>
         </View>
 
+        <View style={styles.watchlistFilters} accessibilityRole="tablist">
+          {([false, true] as const).map((onlyWatched) => (
+            <Pressable
+              key={String(onlyWatched)}
+              style={[styles.watchlistFilter, watchlistOnly === onlyWatched && styles.selectedFilter]}
+              accessibilityRole="tab"
+              accessibilityLabel={onlyWatched ? "My watchlist" : "All markets"}
+              accessibilityState={{ selected: watchlistOnly === onlyWatched }}
+              aria-selected={watchlistOnly === onlyWatched}
+              onPress={() => setWatchlistOnly(onlyWatched)}
+            >
+              <Text style={[styles.filterLabel, watchlistOnly === onlyWatched && styles.selectedFilterLabel]}>
+                {onlyWatched ? "My watchlist" : "All markets"}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
         <View style={styles.summary}>
           <Text style={styles.caption}>
             {snapshot
@@ -205,6 +232,7 @@ export default function MarketsScreen() {
         </View>
 
         <View style={styles.status} accessibilityLiveRegion="polite">
+          {profileLoading || saving ? <Text style={styles.caption}>{saving ? "Saving watchlist…" : "Loading your watchlist…"}</Text> : null}
           <Text style={styles.caption}>
             {paused
               ? "Updates paused while the app is in the background."
@@ -219,6 +247,17 @@ export default function MarketsScreen() {
           ) : null}
           <Text style={styles.caption}>Price arrows compare updates up to 2 minutes apart. A dash means no recent comparison.</Text>
         </View>
+
+        {profileError ? (
+          <View style={styles.error} accessibilityRole="alert">
+            <Text style={styles.errorText}>{profileError}</Text>
+            <Pressable onPress={() => void reloadProfile()} disabled={profileLoading || saving}
+              style={styles.retry} accessibilityRole="button" accessibilityLabel="Retry profile"
+              accessibilityState={{ disabled: profileLoading || saving }}>
+              <Text style={styles.retryLabel}>Retry profile</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         {error && (
           <View style={styles.error} accessibilityRole="alert">
@@ -244,9 +283,10 @@ export default function MarketsScreen() {
         <FlatList
           style={styles.marketList}
           data={markets}
-          extraData={stale || paused ? null : movements}
+          extraData={rowState}
           keyExtractor={(asset) => asset.symbol}
-          renderItem={({ item }) => <MarketRow asset={item} movement={stale || paused ? undefined : movements.get(item.symbol)} />}
+          renderItem={({ item }) => <MarketRow asset={item} movement={stale || paused ? undefined : movements.get(item.symbol)}
+            watched={watched.has(item.symbol)} watchlistDisabled={watchlistDisabled} onToggleWatchlist={toggle} />}
           getItemLayout={(_data, index) => ({
             length: MARKET_ROW_HEIGHT,
             offset: MARKET_ROW_HEIGHT * index,
@@ -262,7 +302,7 @@ export default function MarketsScreen() {
           }
           ListEmptyComponent={
             <View style={styles.empty}>
-              {loading ? (
+              {loading || (watchlistOnly && profileLoading) ? (
                 <ActivityIndicator color="#2375AE" size="large" />
               ) : (
                 <>
@@ -276,8 +316,9 @@ export default function MarketsScreen() {
                     size={30}
                   />
                   <Text style={styles.emptyTitle}>
-                    {error ? "Markets unavailable" : "No markets found"}
+                    {error ? "Markets unavailable" : watchlistOnly && !profile ? "Watchlist unavailable" : watchlistOnly && watched.size === 0 ? "Your watchlist is empty" : "No markets found"}
                   </Text>
+                  {watchlistOnly && profile && watched.size === 0 ? <Text style={styles.caption}>Add pairs using the stars in All markets.</Text> : null}
                   {search !== "" && (
                     <Pressable
                       onPress={() => setSearch("")}
@@ -388,7 +429,7 @@ const styles = StyleSheet.create({
   disabledControl: { opacity: 0.45 },
   columns: {
     flexDirection: "row",
-    gap: 12,
+    gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 12,
     backgroundColor: "#F8F9FA",
@@ -396,9 +437,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderColor: "#E5E8EB",
   },
-  assetColumn: { flex: 1, minWidth: 0 },
+  watchlistFilters: { flexDirection: "row", gap: 8, paddingHorizontal: 20, paddingTop: 12 },
+  watchlistFilter: { flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#DEE3E8", borderRadius: 6 },
+  selectedFilter: { borderColor: "#2375AE", backgroundColor: "#EDF5FA" },
+  selectedFilterLabel: { color: "#2375AE" },
+  assetColumn: { flex: 1, minWidth: 0, marginLeft: 52 },
   priceColumn: { flex: 1, minWidth: 0, textAlign: "right" },
-  changeColumn: { width: 82, textAlign: "right" },
+  changeColumn: { width: 70, textAlign: "right" },
   error: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { Link } from 'expo-router';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { User } from '@supabase/supabase-js';
 
@@ -9,7 +10,7 @@ import { NotificationSettings } from '@/src/components/NotificationSettings';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useProfile } from '@/src/hooks/useProfile';
 import { supabaseClient } from '@/src/lib/supabase';
-import { RISK_PROFILES, SUPPORTED_ASSETS, type Profile, type ProfileUpdate } from '@/src/types/profile';
+import { RISK_PROFILES, type Profile, type ProfileUpdate } from '@/src/types/profile';
 
 const riskDescriptions = {
   conservative: 'A more cautious approach to market movement.',
@@ -23,7 +24,7 @@ export default function ProfileScreen() {
 }
 
 function ProfileContent({ user }: { user: User }) {
-  const { profile, loading, saving, error, reloadProfile, saveProfile } = useProfile(user.id);
+  const { profile, loading, saving, error, reloadProfile, saveProfile, toggleWatchlist } = useProfile();
   const [signingOut, setSigningOut] = useState(false);
   const logoutPending = useRef(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
@@ -64,7 +65,7 @@ function ProfileContent({ user }: { user: User }) {
         {loading ? (
           <View style={accountStyles.card}><ActivityIndicator color={accountColors.primary} /><Text style={accountStyles.body}>Loading your preferences…</Text></View>
         ) : profile ? (
-          <ProfileEditor profile={profile} saving={saving} disabled={signingOut} error={error} saveProfile={saveProfile} />
+          <ProfileEditor profile={profile} saving={saving} disabled={signingOut} error={error} saveProfile={saveProfile} toggleWatchlist={toggleWatchlist} />
         ) : (
           <View style={accountStyles.card}><Feedback message={error || 'Your profile is unavailable.'} /><ActionButton title="Retry loading profile" onPress={() => void reloadProfile()} disabled={signingOut} /></View>
         )}
@@ -80,9 +81,10 @@ function ProfileContent({ user }: { user: User }) {
   );
 }
 
-function ProfileEditor({ profile, saving, disabled, error, saveProfile }: {
+function ProfileEditor({ profile, saving, disabled, error, saveProfile, toggleWatchlist }: {
   profile: Profile; saving: boolean; disabled: boolean; error: string | null;
   saveProfile: (changes: ProfileUpdate) => Promise<boolean>;
+  toggleWatchlist: (symbol: string) => Promise<boolean>;
 }) {
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [message, setMessage] = useState<string | null>(null);
@@ -120,19 +122,20 @@ function ProfileEditor({ profile, saving, disabled, error, saveProfile }: {
       </View>
       <View style={accountStyles.card}>
         <Text style={accountStyles.sectionTitle}>My watchlist</Text>
-        <Text style={accountStyles.body}>Save the assets you want to follow.</Text>
-        {SUPPORTED_ASSETS.map((asset) => {
-          const selected = profile.watchlist.includes(asset);
-          return (
-            <Pressable key={asset} accessibilityRole="checkbox" accessibilityLabel={asset}
-              accessibilityState={{ checked: selected, disabled: unavailable }} disabled={unavailable}
-              style={[styles.option, selected && styles.selected]} onPress={() => void save({
-                watchlist: selected ? profile.watchlist.filter((item) => item !== asset) : [...profile.watchlist, asset],
-              }, 'Watchlist saved.')}>
-              <Text style={styles.optionTitle}>{asset}</Text><Text style={styles.indicator}>{selected ? '✓' : '+'}</Text>
-            </Pressable>
-          );
-        })}
+        <Text style={accountStyles.body}>Follow any spot pair from Markets. Your saved pairs appear here.</Text>
+        <Link href="/markets" style={accountStyles.link}>Manage watchlist in Markets</Link>
+        {profile.watchlist.length === 0 ? <Text style={accountStyles.body}>Your watchlist is empty.</Text> : null}
+        {profile.watchlist.map((asset) => (
+          <Pressable key={asset} accessibilityRole="button" accessibilityLabel={`Remove ${asset} from watchlist`}
+            accessibilityState={{ disabled: unavailable }} disabled={unavailable}
+            style={styles.option} onPress={async () => {
+              setMessage(null);
+              if (await toggleWatchlist(asset)) setMessage('Watchlist saved.');
+            }}>
+            <Text style={[styles.optionTitle, styles.watchlistSymbol]} numberOfLines={1}>{asset}</Text>
+            <Text style={styles.removeLabel}>Remove</Text>
+          </Pressable>
+        ))}
       </View>
     </View>
   );
@@ -153,4 +156,6 @@ const styles = StyleSheet.create({
   optionText: { flex: 1, gap: 4 },
   optionTitle: { color: accountColors.text, fontSize: 15, fontWeight: '600' },
   indicator: { color: accountColors.primary, fontSize: 21 },
+  watchlistSymbol: { flex: 1 },
+  removeLabel: { color: accountColors.primary, fontSize: 14, fontWeight: '600' },
 });

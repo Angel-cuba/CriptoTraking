@@ -17,19 +17,16 @@ export default function SignalsScreen() {
 
 function SignalsContent({ userId }: { userId: string }) {
   const { signals, loading, error, cacheError, updatedAt, fromCache, refresh } = useSignals(userId);
-  const { profile, loading: profileLoading, error: profileError, reloadProfile } = useProfile(userId);
+  const { profile, loading: profileLoading, error: profileError, reloadProfile } = useProfile();
   const { processSignals, ready: notificationsReady, error: notificationError } = useSignalNotifications();
   const focused = useRef(false);
   const isFocused = useCallback(() => focused.current, []);
   const [filter, setFilter] = useState<'all' | 'watchlist'>('all');
-  const previouslyFocused = useRef(false);
 
   useFocusEffect(useCallback(() => {
     focused.current = true;
-    if (previouslyFocused.current) void reloadProfile();
-    previouslyFocused.current = true;
     return () => { focused.current = false; };
-  }, [reloadProfile]));
+  }, []));
 
   useEffect(() => {
     if (!notificationsReady || fromCache || loading || updatedAt === null || profileLoading || profileError || !profile) return;
@@ -84,8 +81,8 @@ function SignalsContent({ userId }: { userId: string }) {
             {filter === 'watchlist' && visible.length === 0 && !loading && !error ? (
               <View style={accountStyles.card}>
                 <Text style={accountStyles.sectionTitle}>{watchlist.length === 0 ? 'Your watchlist is empty' : 'No tracked signals'}</Text>
-                <Text style={accountStyles.body}>{watchlist.length === 0 ? 'Choose the assets you want to follow in your profile.' : 'This view covers BTCUSDT, ETHUSDT and SOLUSDT. Select one of these pairs in your profile.'}</Text>
-                <Link href="/profile" style={accountStyles.link}>Manage watchlist</Link>
+                <Text style={accountStyles.body}>{watchlist.length === 0 ? 'Choose the pairs you want to follow in Markets.' : 'Signals currently cover BTCUSDT, ETHUSDT and SOLUSDT. Your other saved pairs remain available in Markets.'}</Text>
+                <Link href="/markets" style={accountStyles.link}>Manage watchlist</Link>
               </View>
             ) : null}
             {visible.map((signal) => <SignalCard key={signal.symbol} signal={signal} />)}
