@@ -1,9 +1,10 @@
 import { Text, View } from 'react-native';
-import { accountStyles, Feedback } from '@/src/components/AccountScreen';
+import { useAccountStyles, Feedback } from '@/src/components/AccountScreen';
 import { ActionButton } from '@/src/components/ActionButton';
 import { useSignalNotifications } from '@/src/context/SignalNotificationContext';
 
 export function NotificationSettings({ disabled = false }: { disabled?: boolean }) {
+  const accountStyles = useAccountStyles();
   const settings = useSignalNotifications();
   return (
     <View style={accountStyles.card}>

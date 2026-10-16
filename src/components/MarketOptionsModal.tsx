@@ -1,3 +1,5 @@
+import { useAppTheme, useThemeStyles } from '@/src/context/ThemeContext';
+import type { ThemeColors } from '@/src/lib/theme';
 import { SymbolView } from "expo-symbols";
 import {
   FlatList,
@@ -24,6 +26,8 @@ export function MarketOptionsModal({
   options,
   onClose,
 }: Props) {
+  const { colors: accountColors } = useAppTheme();
+  const styles = useThemeStyles(createStyles);
   return (
     <Modal visible={visible} transparent onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -50,7 +54,7 @@ export function MarketOptionsModal({
             >
               <SymbolView
                 name={{ ios: "xmark", android: "close", web: "close" }}
-                tintColor="#20262D"
+                tintColor={accountColors.text}
                 size={18}
               />
             </Pressable>
@@ -74,7 +78,7 @@ export function MarketOptionsModal({
                 {item.selected && (
                   <SymbolView
                     name={{ ios: "checkmark", android: "check", web: "check" }}
-                    tintColor="#2375AE"
+                    tintColor={accountColors.primary}
                     size={20}
                   />
                 )}
@@ -87,20 +91,21 @@ export function MarketOptionsModal({
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (accountColors: ThemeColors) => StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: "flex-end",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: accountColors.overlay,
   },
   sheet: {
     width: "100%",
     maxWidth: 600,
     maxHeight: "75%",
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    borderWidth: 1, borderColor: accountColors.border, overflow: "hidden",
+    backgroundColor: accountColors.surface,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
   },
   header: {
     flexDirection: "row",
@@ -110,9 +115,9 @@ const styles = StyleSheet.create({
     paddingRight: 8,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E8EB",
+    borderBottomColor: accountColors.border,
   },
-  title: { flex: 1, fontSize: 18, fontWeight: "600", color: "#20262D" },
+  title: { flex: 1, fontSize: 18, fontWeight: "600", color: accountColors.text },
   close: {
     width: 44,
     height: 44,
@@ -127,6 +132,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 14,
   },
-  selected: { backgroundColor: "#EFF6FB" },
-  label: { flex: 1, fontSize: 16, color: "#20262D" },
+  selected: { backgroundColor: accountColors.primarySoft },
+  label: { flex: 1, fontSize: 16, color: accountColors.text },
 });

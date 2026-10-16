@@ -1,3 +1,5 @@
+import { useAppTheme, useThemeStyles } from '@/src/context/ThemeContext';
+import type { ThemeColors } from '@/src/lib/theme';
 import { useCallback, useMemo, useState } from "react";
 import { SymbolView } from "expo-symbols";
 import {
@@ -25,6 +27,8 @@ const SORT_OPTIONS = [
 type Sort = (typeof SORT_OPTIONS)[number]["value"];
 
 export default function MarketsScreen() {
+  const { colors: accountColors } = useAppTheme();
+  const styles = useThemeStyles(createStyles);
   const { snapshot, movements, loading, error, stale, paused, retryAt, reload } = useMarketCatalog();
   const { profile, loading: profileLoading, saving, error: profileError, reloadProfile, toggleWatchlist } = useProfile();
   const watchlistDisabled = profileLoading || saving || !profile;
@@ -97,7 +101,7 @@ export default function MarketsScreen() {
             accessibilityState={{ disabled: refreshUnavailable, busy: loading }}
           >
             {loading ? (
-              <ActivityIndicator color="#2375AE" />
+              <ActivityIndicator color={accountColors.primary} />
             ) : (
               <SymbolView
                 name={{
@@ -105,7 +109,7 @@ export default function MarketsScreen() {
                   android: "refresh",
                   web: "refresh",
                 }}
-                tintColor="#2375AE"
+                tintColor={accountColors.primary}
                 size={22}
               />
             )}
@@ -115,13 +119,13 @@ export default function MarketsScreen() {
         <View style={styles.search}>
           <SymbolView
             name={{ ios: "magnifyingglass", android: "search", web: "search" }}
-            tintColor="#69717B"
+            tintColor={accountColors.muted}
             size={19}
           />
           <TextInput
             style={styles.searchInput}
             placeholder="Search assets or pairs"
-            placeholderTextColor="#69717B"
+            placeholderTextColor={accountColors.muted}
             accessibilityLabel="Search markets"
             autoCapitalize="none"
             autoCorrect={false}
@@ -142,7 +146,7 @@ export default function MarketsScreen() {
                   android: "cancel",
                   web: "cancel",
                 }}
-                tintColor="#69717B"
+                tintColor={accountColors.muted}
                 size={20}
               />
             </Pressable>
@@ -166,7 +170,7 @@ export default function MarketsScreen() {
                 android: "expand_more",
                 web: "expand_more",
               }}
-              tintColor="#20262D"
+              tintColor={accountColors.text}
               size={15}
             />
           </Pressable>
@@ -183,7 +187,7 @@ export default function MarketsScreen() {
                 android: "swap_vert",
                 web: "swap_vert",
               }}
-              tintColor="#20262D"
+              tintColor={accountColors.text}
               size={18}
             />
             <Text style={styles.filterLabel}>
@@ -276,8 +280,7 @@ export default function MarketsScreen() {
 
         <View style={styles.columns}>
           <Text style={[styles.caption, styles.assetColumn]}>Asset</Text>
-          <Text style={[styles.caption, styles.priceColumn]}>Price / update</Text>
-          <Text style={[styles.caption, styles.changeColumn]}>24h</Text>
+          <Text style={[styles.caption, styles.priceColumn]}>Price / 24h</Text>
         </View>
 
         <FlatList
@@ -303,7 +306,7 @@ export default function MarketsScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               {loading || (watchlistOnly && profileLoading) ? (
-                <ActivityIndicator color="#2375AE" size="large" />
+                <ActivityIndicator color={accountColors.primary} size="large" />
               ) : (
                 <>
                   <SymbolView
@@ -312,7 +315,7 @@ export default function MarketsScreen() {
                       android: "search",
                       web: "search",
                     }}
-                    tintColor="#69717B"
+                    tintColor={accountColors.muted}
                     size={30}
                   />
                   <Text style={styles.emptyTitle}>
@@ -344,21 +347,22 @@ export default function MarketsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
-  content: { flex: 1, width: "100%", maxWidth: 720, alignSelf: "center" },
+const createStyles = (accountColors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: accountColors.background },
+  content: { flex: 1, width: "100%", maxWidth: 688, alignSelf: "center" },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 28,
     paddingBottom: 20,
   },
   heading: { flex: 1, gap: 5 },
-  brand: { fontSize: 13, color: "#69717B", fontWeight: "500" },
-  title: { fontSize: 28, fontWeight: "700", color: "#20262D" },
+  brand: { fontSize: 12, color: accountColors.primary, fontWeight: "700", letterSpacing: 1.8 },
+  title: { fontSize: 30, fontWeight: "700", color: accountColors.text },
   iconButton: {
+    backgroundColor: accountColors.surface, borderRadius: 14,
     width: 44,
     height: 44,
     alignItems: "center",
@@ -369,18 +373,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     marginHorizontal: 20,
-    minHeight: 48,
+    minHeight: 52,
     paddingLeft: 14,
     paddingRight: 4,
-    backgroundColor: "#F3F5F7",
-    borderRadius: 8,
+    backgroundColor: accountColors.surface,
+    borderRadius: 16,
   },
   searchInput: {
     flex: 1,
     minWidth: 0,
     fontSize: 15,
     paddingVertical: 12,
-    color: "#20262D",
+    color: accountColors.text,
   },
   clearButton: {
     width: 44,
@@ -403,10 +407,10 @@ const styles = StyleSheet.create({
     minHeight: 44,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: "#DEE3E8",
-    borderRadius: 6,
+    borderColor: accountColors.border,
+    borderRadius: 14,
   },
-  filterLabel: { fontSize: 14, fontWeight: "500", color: "#20262D" },
+  filterLabel: { fontSize: 14, fontWeight: "500", color: accountColors.text },
   sortButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -420,43 +424,42 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 6,
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 28,
     paddingBottom: 12,
   },
-  caption: { fontSize: 12, color: "#69717B" },
+  caption: { fontSize: 12, color: accountColors.muted },
   status: { paddingHorizontal: 20, paddingBottom: 12, gap: 5 },
-  staleText: { fontSize: 12, color: "#9A6700", lineHeight: 18 },
+  staleText: { fontSize: 12, color: accountColors.primary, lineHeight: 18 },
   disabledControl: { opacity: 0.45 },
   columns: {
     flexDirection: "row",
     gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: "#F8F9FA",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E8EB",
+    backgroundColor: accountColors.background,
+    borderTopWidth: 0,
+    borderBottomWidth: 0,
+    borderColor: accountColors.border,
   },
   watchlistFilters: { flexDirection: "row", gap: 8, paddingHorizontal: 20, paddingTop: 12 },
-  watchlistFilter: { flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#DEE3E8", borderRadius: 6 },
-  selectedFilter: { borderColor: "#2375AE", backgroundColor: "#EDF5FA" },
-  selectedFilterLabel: { color: "#2375AE" },
-  assetColumn: { flex: 1, minWidth: 0, marginLeft: 52 },
+  watchlistFilter: { flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: accountColors.border, borderRadius: 14 },
+  selectedFilter: { borderColor: accountColors.primary, backgroundColor: accountColors.primarySoft },
+  selectedFilterLabel: { color: accountColors.primary },
+  assetColumn: { flex: 1, minWidth: 0 },
   priceColumn: { flex: 1, minWidth: 0, textAlign: "right" },
-  changeColumn: { width: 70, textAlign: "right" },
-  error: {
+    error: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 20,
     gap: 10,
-    backgroundColor: "#FFF3F3",
+    backgroundColor: accountColors.dangerSoft,
   },
-  errorText: { flex: 1, fontSize: 13, color: "#A52B3C", paddingVertical: 12 },
+  errorText: { flex: 1, fontSize: 13, color: accountColors.danger, paddingVertical: 12 },
   retry: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
-  retryLabel: { fontSize: 14, fontWeight: "600", color: "#2375AE" },
-  list: { paddingBottom: 12 },
+  retryLabel: { fontSize: 14, fontWeight: "600", color: accountColors.primary },
+  list: { paddingBottom: 152 },
   marketList: { flex: 1 },
-  emptyList: { flexGrow: 1 },
+  emptyList: { flexGrow: 1, paddingBottom: 152 },
   empty: {
     flex: 1,
     alignItems: "center",
@@ -464,5 +467,5 @@ const styles = StyleSheet.create({
     padding: 32,
     gap: 14,
   },
-  emptyTitle: { fontSize: 16, color: "#69717B", textAlign: "center" },
+  emptyTitle: { fontSize: 16, color: accountColors.muted, textAlign: "center" },
 });

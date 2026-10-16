@@ -1,7 +1,8 @@
 import { Link, Stack } from 'expo-router';
-import { AccountHeading, AccountScreen, accountStyles } from '@/src/components/AccountScreen';
+import { AccountHeading, AccountScreen, useAccountStyles } from '@/src/components/AccountScreen';
 
 export default function NotFoundScreen() {
+  const accountStyles = useAccountStyles();
   return (
     <AccountScreen centered>
       <Stack.Screen options={{ headerShown: false }} />

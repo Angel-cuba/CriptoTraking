@@ -3,11 +3,12 @@ import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { supabaseClient } from '@/src/lib/supabase';
-import { AccountHeading, AccountScreen, accountStyles, Feedback } from './AccountScreen';
+import { AccountHeading, AccountScreen, useAccountStyles, Feedback } from './AccountScreen';
 import { ActionButton } from './ActionButton';
 import { FormField } from './FormField';
 
 export function AuthForm({ mode }: { mode: 'login' | 'register' }) {
+  const accountStyles = useAccountStyles();
   const registering = mode === 'register';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

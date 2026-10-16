@@ -1,9 +1,13 @@
+import { AppearanceSettings } from '@/src/components/AppearanceSettings';
+import { useAppTheme, useThemeStyles } from '@/src/context/ThemeContext';
+import type { ThemeColors } from '@/src/lib/theme';
 import { useRef, useState } from 'react';
 import { Link } from 'expo-router';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { User } from '@supabase/supabase-js';
 
-import { AccountScreen, accountColors, accountStyles, Feedback } from '@/src/components/AccountScreen';
+import { AccountScreen, useAccountStyles, Feedback } from '@/src/components/AccountScreen';
+import { AssetAvatar } from '@/src/components/AssetAvatar';
 import { ActionButton } from '@/src/components/ActionButton';
 import { FormField } from '@/src/components/FormField';
 import { NotificationSettings } from '@/src/components/NotificationSettings';
@@ -24,6 +28,9 @@ export default function ProfileScreen() {
 }
 
 function ProfileContent({ user }: { user: User }) {
+  const { colors: accountColors } = useAppTheme();
+  const styles = useThemeStyles(createStyles);
+  const accountStyles = useAccountStyles();
   const { profile, loading, saving, error, reloadProfile, saveProfile, toggleWatchlist } = useProfile();
   const [signingOut, setSigningOut] = useState(false);
   const logoutPending = useRef(false);
@@ -47,21 +54,22 @@ function ProfileContent({ user }: { user: User }) {
   }
 
   return (
-    <AccountScreen>
+    <AccountScreen tabbed>
       <View style={accountStyles.gap}>
         <View style={styles.header}>
           <Text style={styles.eyebrow}>YOUR ACCOUNT</Text>
           <Text accessibilityRole="header" style={styles.title}>My profile</Text>
           <Text style={accountStyles.body}>Your details, your preferences.</Text>
         </View>
-        <View style={styles.identity}>
+        <View style={[accountStyles.card, styles.identity]}>
           <View style={styles.avatar}><Text style={styles.avatarText}>{initial}</Text></View>
           <View style={styles.identityText}>
-            <Text style={styles.name}>{profile?.display_name || 'Your Kripto account'}</Text>
-            <Text style={accountStyles.body} selectable>{user.email}</Text>
+            <Text style={styles.name} numberOfLines={2}>{profile?.display_name || 'Your Kripto account'}</Text>
+            <Text style={accountStyles.body} selectable numberOfLines={2}>{user.email}</Text>
             <Text style={styles.status}>{user.email_confirmed_at ? 'Email verified' : 'Signed in'}</Text>
           </View>
         </View>
+        <AppearanceSettings />
         {loading ? (
           <View style={accountStyles.card}><ActivityIndicator color={accountColors.primary} /><Text style={accountStyles.body}>Loading your preferences…</Text></View>
         ) : profile ? (
@@ -86,6 +94,8 @@ function ProfileEditor({ profile, saving, disabled, error, saveProfile, toggleWa
   saveProfile: (changes: ProfileUpdate) => Promise<boolean>;
   toggleWatchlist: (symbol: string) => Promise<boolean>;
 }) {
+  const styles = useThemeStyles(createStyles);
+  const accountStyles = useAccountStyles();
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [message, setMessage] = useState<string | null>(null);
   const unavailable = saving || disabled;
@@ -112,6 +122,7 @@ function ProfileEditor({ profile, saving, disabled, error, saveProfile, toggleWa
         <Text style={accountStyles.body}>Choose the approach that best describes you.</Text>
         {RISK_PROFILES.map((risk) => (
           <Pressable key={risk} accessibilityRole="radio" accessibilityLabel={risk}
+            aria-checked={profile.risk_profile === risk}
             accessibilityState={{ checked: profile.risk_profile === risk, disabled: unavailable }} disabled={unavailable}
             style={[styles.option, profile.risk_profile === risk && styles.selected]}
             onPress={() => { if (risk !== profile.risk_profile) void save({ risk_profile: risk }, 'Risk profile saved.'); }}>
@@ -132,6 +143,7 @@ function ProfileEditor({ profile, saving, disabled, error, saveProfile, toggleWa
               setMessage(null);
               if (await toggleWatchlist(asset)) setMessage('Watchlist saved.');
             }}>
+            <AssetAvatar symbol={asset.replace(/USDT$/, '')} size={32} />
             <Text style={[styles.optionTitle, styles.watchlistSymbol]} numberOfLines={1}>{asset}</Text>
             <Text style={styles.removeLabel}>Remove</Text>
           </Pressable>
@@ -141,21 +153,21 @@ function ProfileEditor({ profile, saving, disabled, error, saveProfile, toggleWa
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (accountColors: ThemeColors) => StyleSheet.create({
   header: { gap: 8, paddingTop: 10 },
   eyebrow: { color: accountColors.primary, fontSize: 12, letterSpacing: 1.8, fontWeight: '700' },
   title: { color: accountColors.text, fontSize: 30, fontWeight: '700' },
-  identity: { flexDirection: 'row', gap: 16, alignItems: 'center', paddingVertical: 8 },
-  identityText: { flex: 1, gap: 4 },
-  avatar: { width: 64, height: 64, borderRadius: 22, backgroundColor: '#e3edff', alignItems: 'center', justifyContent: 'center' },
+  identity: { flexDirection: 'row', gap: 16, alignItems: 'center', paddingVertical: 22, borderColor: accountColors.border },
+  identityText: { flex: 1, minWidth: 0, gap: 5 },
+  avatar: { width: 64, height: 64, borderRadius: 22, backgroundColor: accountColors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 28, fontWeight: '700', color: accountColors.primary },
   name: { color: accountColors.text, fontSize: 19, fontWeight: '700' },
   status: { color: accountColors.success, fontSize: 12, fontWeight: '600', marginTop: 3 },
-  option: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 14, borderWidth: 1, borderColor: accountColors.border, borderRadius: 12 },
-  selected: { borderColor: accountColors.primary, backgroundColor: '#f0f5ff' },
+  option: { minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 14, borderWidth: 1, borderColor: accountColors.border, borderRadius: 16, backgroundColor: accountColors.background },
+  selected: { borderColor: accountColors.primary, backgroundColor: accountColors.primarySoft },
   optionText: { flex: 1, gap: 4 },
   optionTitle: { color: accountColors.text, fontSize: 15, fontWeight: '600' },
   indicator: { color: accountColors.primary, fontSize: 21 },
   watchlistSymbol: { flex: 1 },
-  removeLabel: { color: accountColors.primary, fontSize: 14, fontWeight: '600' },
+  removeLabel: { color: accountColors.accent, fontSize: 14, fontWeight: '600' },
 });

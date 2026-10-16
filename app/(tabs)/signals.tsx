@@ -1,8 +1,10 @@
+import { useAppTheme, useThemeStyles } from '@/src/context/ThemeContext';
+import type { ThemeColors } from '@/src/lib/theme';
 import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AccountScreen, accountColors, accountStyles, Feedback } from '@/src/components/AccountScreen';
+import { AccountScreen, useAccountStyles, Feedback } from '@/src/components/AccountScreen';
 import { ActionButton } from '@/src/components/ActionButton';
 import { SignalCard } from '@/src/components/SignalCard';
 import { useSignalNotifications } from '@/src/context/SignalNotificationContext';
@@ -16,6 +18,9 @@ export default function SignalsScreen() {
 }
 
 function SignalsContent({ userId }: { userId: string }) {
+  const { colors: accountColors } = useAppTheme();
+  const styles = useThemeStyles(createStyles);
+  const accountStyles = useAccountStyles();
   const { signals, loading, error, cacheError, updatedAt, fromCache, refresh } = useSignals(userId);
   const { profile, loading: profileLoading, error: profileError, reloadProfile } = useProfile();
   const { processSignals, ready: notificationsReady, error: notificationError } = useSignalNotifications();
@@ -39,7 +44,7 @@ function SignalsContent({ userId }: { userId: string }) {
   const missingWatchlist = filter === 'watchlist' && !profile;
 
   return (
-    <AccountScreen>
+    <AccountScreen tabbed>
       <View style={accountStyles.gap}>
         <View style={styles.heading}>
           <Text style={styles.eyebrow}>MARKET OVERVIEW</Text>
@@ -50,7 +55,7 @@ function SignalsContent({ userId }: { userId: string }) {
         <View accessibilityRole="tablist" style={styles.filters}>
           {(['all', 'watchlist'] as const).map((value) => (
             <Pressable key={value} accessibilityRole="tab" accessibilityLabel={value === 'all' ? 'All signals' : 'My watchlist'}
-              accessibilityState={{ selected: filter === value }} onPress={() => setFilter(value)}
+              aria-selected={filter === value} accessibilityState={{ selected: filter === value }} onPress={() => setFilter(value)}
               style={[styles.filter, filter === value && styles.selectedFilter]}>
               <Text style={[styles.filterText, filter === value && styles.selectedText]}>{value === 'all' ? 'All signals' : 'My watchlist'}</Text>
             </Pressable>
@@ -94,13 +99,13 @@ function SignalsContent({ userId }: { userId: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (accountColors: ThemeColors) => StyleSheet.create({
   heading: { gap: 8, paddingTop: 10 },
   eyebrow: { color: accountColors.primary, fontSize: 12, letterSpacing: 1.8, fontWeight: '700' },
   title: { color: accountColors.text, fontSize: 30, fontWeight: '700' },
   filters: { flexDirection: 'row', gap: 10 },
-  filter: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', padding: 12, borderWidth: 1, borderColor: accountColors.border, borderRadius: 12, backgroundColor: '#fff' },
-  selectedFilter: { borderColor: accountColors.primary, backgroundColor: '#eaf1ff' },
+  filter: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', padding: 12, borderWidth: 1, borderColor: accountColors.border, borderRadius: 16, backgroundColor: accountColors.surface },
+  selectedFilter: { borderColor: accountColors.primary, backgroundColor: accountColors.primarySoft },
   filterText: { color: accountColors.muted, fontSize: 14, fontWeight: '600' },
   selectedText: { color: accountColors.primary },
   source: { color: accountColors.muted, fontSize: 12, textAlign: 'center', lineHeight: 18 },

@@ -1,9 +1,11 @@
-import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { useMemo } from 'react';
+import { AppThemeProvider, useAppTheme } from '@/src/context/ThemeContext';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Text, View } from 'react-native';
 import 'react-native-reanimated';
 
-import { AccountScreen, accountColors, accountStyles, Feedback } from '@/src/components/AccountScreen';
+import { AccountScreen, useAccountStyles, Feedback } from '@/src/components/AccountScreen';
 import { ActionButton } from '@/src/components/ActionButton';
 import { AuthProvider } from '@/src/context/AuthContext';
 import { useAuth } from '@/src/hooks/useAuth';
@@ -12,15 +14,28 @@ export { ErrorBoundary } from 'expo-router';
 export const unstable_settings = { initialRouteName: 'index' };
 
 export default function RootLayout() {
+  return <AppThemeProvider><ThemedApp /></AppThemeProvider>;
+}
+
+function ThemedApp() {
+  const { mode, colors, ready } = useAppTheme();
+  const navigationTheme = useMemo(() => {
+    const base = mode === 'dark' ? DarkTheme : DefaultTheme;
+    return { ...base, colors: { ...base.colors, primary: colors.primary, background: colors.background,
+      card: colors.surface, text: colors.text, border: colors.border, notification: colors.accent } };
+  }, [mode, colors]);
+  if (!ready) return null;
   return (
-    <ThemeProvider value={DefaultTheme}>
+    <ThemeProvider value={navigationTheme}>
       <AuthProvider><RootNavigator /></AuthProvider>
-      <StatusBar style="dark" />
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
     </ThemeProvider>
   );
 }
 
 function RootNavigator() {
+  const { colors: accountColors } = useAppTheme();
+  const accountStyles = useAccountStyles();
   const { session, loading, error, retry } = useAuth();
   if (loading || error) {
     return (
@@ -34,7 +49,7 @@ function RootNavigator() {
     );
   }
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: accountColors.background } }}>
       <Stack.Screen name="index" />
       <Stack.Protected guard={!session}><Stack.Screen name="(auth)" /></Stack.Protected>
       <Stack.Protected guard={!!session}><Stack.Screen name="(tabs)" /></Stack.Protected>
