@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { ActivityIndicator, FlatList, Linking, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, FlatList, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PriceAlertRow } from '@/src/components/PriceAlertRow';
 import { useAppTheme, useThemeStyles } from '@/src/context/ThemeContext';
 import { useMarketCatalog } from '@/src/hooks/useMarketCatalog';
 import { usePriceAlerts } from '@/src/hooks/usePriceAlerts';
 import { useProfile } from '@/src/hooks/useProfile';
-import type { ThemeColors } from '@/src/lib/theme';
+import { getTabContentPadding, type ThemeColors } from '@/src/lib/theme';
+import { AppSwitch } from '@/src/components/AppSwitch';
 import { DEFAULT_PRICE_ALERT_SETTINGS } from '@/src/services/priceAlertService';
 
 const FILTERS = [
@@ -21,6 +22,7 @@ const FILTERS = [
 export default function AlertsScreen() {
   const { colors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
+  const insets = useSafeAreaInsets();
   const { events, loading, error, enabled, pendingEnabled, savingPreference, setEnabled, retry,
     notificationsEnabled, pendingNotificationsEnabled, notificationBusy, notificationSupported,
     permission, notificationError, setNotificationsEnabled } = usePriceAlerts();
@@ -120,16 +122,9 @@ export default function AlertsScreen() {
                     <Text style={styles.caption} accessibilityLiveRegion="polite">{preferenceStatus}</Text>
                   </View>
                   {savingPreference ? <ActivityIndicator color={colors.primary} accessibilityLabel="Saving alert preference" /> : null}
-                  <View style={styles.toggle}>
-                    <Switch value={monitoring} onValueChange={setEnabled} disabled={preferenceDisabled}
-                      accessibilityLabel="Watchlist price alerts"
-                      accessibilityHint="Monitor your followed pairs while Kripto is active. Pausing keeps your history."
-                      trackColor={{ false: colors.muted, true: colors.action }}
-                      thumbColor={monitoring ? colors.onPrimary : colors.surface}
-                      ios_backgroundColor={colors.muted}
-                      {...(Platform.OS === 'web' ? { activeThumbColor: colors.onPrimary } : {})}
-                      hitSlop={6} style={styles.switchControl} />
-                  </View>
+                  <AppSwitch value={monitoring} onValueChange={setEnabled} disabled={preferenceDisabled}
+                    accessibilityLabel="Watchlist price alerts"
+                    accessibilityHint="Monitor your followed pairs while Kripto is active. Pausing keeps your history." />
                 </View>
                 <View style={styles.rules}>
                   <Text style={styles.rule}>Threshold ±{DEFAULT_PRICE_ALERT_SETTINGS.thresholdPercent}%</Text>
@@ -144,16 +139,9 @@ export default function AlertsScreen() {
                     <Text style={styles.caption} accessibilityLiveRegion="polite">{notificationStatus}</Text>
                   </View>
                   {notificationBusy ? <ActivityIndicator color={colors.primary} accessibilityLabel="Checking notification permission" /> : null}
-                  <View style={styles.toggle}>
-                    <Switch value={notifying} onValueChange={(next) => void setNotificationsEnabled(next)} disabled={notificationDisabled}
-                      accessibilityLabel="Price alert notifications"
-                      accessibilityHint="Allow local notifications for new price alerts on this device."
-                      trackColor={{ false: colors.muted, true: colors.action }}
-                      thumbColor={notifying ? colors.onPrimary : colors.surface}
-                      ios_backgroundColor={colors.muted}
-                      {...(Platform.OS === 'web' ? { activeThumbColor: colors.onPrimary } : {})}
-                      hitSlop={6} style={styles.switchControl} />
-                  </View>
+                  <AppSwitch value={notifying} onValueChange={(next) => void setNotificationsEnabled(next)} disabled={notificationDisabled}
+                    accessibilityLabel="Price alert notifications"
+                    accessibilityHint="Allow local notifications for new price alerts on this device." />
                 </View>
                 {notificationSupported ? <Text style={styles.caption}>Only new alerts are notified while Kripto is active. Your history is never replayed.</Text> : null}
                 {notificationSupported && (permission === 'denied' || permission === 'provisional') ? (
@@ -212,7 +200,7 @@ export default function AlertsScreen() {
               )}
             </View>
           }
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: getTabContentPadding(insets.bottom) }]}
         />
       </View>
     </SafeAreaView>
@@ -233,13 +221,11 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   filterLabel: { fontSize: 14, color: colors.muted, fontWeight: '600' },
   selectedFilterLabel: { color: colors.primary },
   list: { flex: 1 },
-  listContent: { flexGrow: 1, paddingBottom: 152 },
+  listContent: { flexGrow: 1 },
   listHeader: { paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
   monitoringCard: { padding: 18, gap: 12, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   monitoringHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   monitoringCopy: { flex: 1, gap: 5 },
-  toggle: { minWidth: 56, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  switchControl: { width: 52, height: 32 },
   settings: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start' },
   rules: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   rule: { fontSize: 12, lineHeight: 18, color: colors.primary, backgroundColor: colors.primarySoft, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },

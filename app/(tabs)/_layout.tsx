@@ -4,7 +4,8 @@ import { SignalNotificationProvider } from '@/src/context/SignalNotificationCont
 import { useAuth } from '@/src/hooks/useAuth';
 import { Tabs } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useWindowDimensions } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { TAB_BAR_HEIGHT } from '@/src/lib/theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppTheme } from '@/src/context/ThemeContext';
 
@@ -14,6 +15,7 @@ export default function TabLayout() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const side = Math.max(16, (width - 520) / 2);
+  const bottom = Math.max(insets.bottom, 16);
   if (!user) return null;
   return (
     <ProfileProvider key={user.id} userId={user.id}>
@@ -21,20 +23,26 @@ export default function TabLayout() {
         <PriceAlertProvider key={user.id} userId={user.id}>
           <Tabs initialRouteName="profile" screenOptions={{
             headerShown: false,
-            tabBarActiveTintColor: accountColors.primary,
+            tabBarActiveTintColor: accountColors.onPrimary,
             tabBarInactiveTintColor: accountColors.muted,
-            tabBarActiveBackgroundColor: accountColors.primarySoft,
+            tabBarActiveBackgroundColor: accountColors.action,
             tabBarLabelPosition: 'below-icon',
             tabBarHideOnKeyboard: true,
-            tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
-            tabBarItemStyle: { borderRadius: 18, marginHorizontal: 4, overflow: 'hidden' },
+            tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 3 },
+            tabBarItemStyle: { borderRadius: 20, marginHorizontal: 3, overflow: 'hidden' },
+            tabBarBackground: () => (
+              <>
+                <View pointerEvents="none" style={{ position: 'absolute', top: -12, bottom: -bottom, start: -side, end: -side,
+                  backgroundColor: accountColors.background, boxShadow: `0 -16px 24px ${accountColors.background}` }} />
+                <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: accountColors.elevated,
+                  borderRadius: 28, borderWidth: 1, borderColor: accountColors.border,
+                  boxShadow: mode === 'dark' ? '0 8px 24px rgba(0,0,0,0.32)' : '0 8px 24px rgba(24,32,50,0.12)' }]} />
+              </>
+            ),
             tabBarStyle: {
-              position: 'absolute', left: side, right: side, bottom: Math.max(insets.bottom, 16),
-              height: 76, paddingTop: 8, paddingBottom: 8, paddingHorizontal: 6,
-              backgroundColor: accountColors.surface, borderColor: accountColors.border,
-              borderWidth: 1, borderTopWidth: 1, borderRadius: 26,
-              shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: mode === 'dark' ? 0.3 : 0.1, shadowRadius: 20, elevation: 8,
+              position: 'absolute', start: side, end: side, bottom,
+              height: TAB_BAR_HEIGHT, paddingTop: 8, paddingBottom: 8, paddingHorizontal: 5,
+              backgroundColor: 'transparent', borderWidth: 0, borderTopWidth: 0, borderRadius: 28, elevation: 0,
             },
           }}>
             <Tabs.Screen name="markets" options={{ title: 'Markets', tabBarIcon: ({ color }) => (

@@ -1,8 +1,8 @@
 import { useAppTheme, useThemeStyles } from '@/src/context/ThemeContext';
-import type { ThemeColors } from '@/src/lib/theme';
+import { getTabContentPadding, type ThemeColors } from '@/src/lib/theme';
 import type { PropsWithChildren } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 export function useAccountStyles() {
@@ -11,10 +11,11 @@ export function useAccountStyles() {
 
 export function AccountScreen({ children, centered = false, tabbed = false }: PropsWithChildren<{ centered?: boolean; tabbed?: boolean }>) {
   const styles = useThemeStyles(createStyles);
+  const insets = useSafeAreaInsets();
   return (
     <SafeAreaView style={styles.safeArea} edges={tabbed ? ['top', 'left', 'right'] : undefined}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={[styles.scroll, centered && styles.centered, tabbed && styles.tabbed]} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={[styles.scroll, centered && styles.centered, tabbed && { paddingBottom: getTabContentPadding(insets.bottom) }]} keyboardShouldPersistTaps="handled">
           <View style={[styles.content, centered && styles.authContent]}>{children}</View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -62,7 +63,6 @@ const createStyles = (accountColors: ThemeColors) => StyleSheet.create({
   centered: { justifyContent: 'center' },
   content: { width: '100%', maxWidth: 640, alignSelf: 'center' },
   authContent: { maxWidth: 460 },
-  tabbed: { paddingBottom: 152 },
   heading: { marginBottom: 28 },
   brandMark: { width: 44, height: 44, borderRadius: 14, backgroundColor: accountColors.action, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   brandLetter: { color: accountColors.onPrimary, fontWeight: '800', fontSize: 25 },

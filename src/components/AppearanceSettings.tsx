@@ -1,7 +1,8 @@
-import { Platform, StyleSheet, Switch, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 
 import { useAppTheme, useThemeStyles } from '@/src/context/ThemeContext';
+import { AppSwitch } from '@/src/components/AppSwitch';
 import type { ThemeColors } from '@/src/lib/theme';
 import { Feedback, useAccountStyles } from './AccountScreen';
 
@@ -22,14 +23,8 @@ export function AppearanceSettings() {
           <Text style={styles.title}>Dark mode</Text>
           <Text style={accountStyles.body}>{mode === 'dark' ? 'Dark palette is on.' : 'Light palette is on.'}</Text>
         </View>
-        <View style={styles.toggle}>
-          <Switch value={mode === 'dark'} onValueChange={(enabled) => void setMode(enabled ? 'dark' : 'light')}
-            accessibilityLabel="Dark mode" accessibilityHint="Switch between light and dark appearance."
-            disabled={!ready} trackColor={{ false: colors.muted, true: colors.action }}
-            thumbColor={mode === 'dark' ? colors.onPrimary : colors.surface} ios_backgroundColor={colors.muted}
-            {...(Platform.OS === 'web' ? { activeThumbColor: colors.onPrimary } : {})}
-            hitSlop={6} style={styles.switchControl} />
-        </View>
+        <AppSwitch value={mode === 'dark'} onValueChange={(enabled) => void setMode(enabled ? 'dark' : 'light')}
+          accessibilityLabel="Dark mode" accessibilityHint="Switch between light and dark appearance." disabled={!ready} />
       </View>
       <Text style={accountStyles.body}>{saving ? 'Saving preference…' : 'Choose light or dark for this device.'}</Text>
       <Feedback message={error} />
@@ -42,6 +37,4 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   icon: { width: 40, height: 40, borderRadius: 14, backgroundColor: colors.elevated, alignItems: 'center', justifyContent: 'center' },
   label: { flex: 1, minWidth: 0, gap: 3 },
   title: { color: colors.text, fontSize: 15, fontWeight: '600' },
-  toggle: { minWidth: 56, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  switchControl: { width: 52, height: 32 },
 });

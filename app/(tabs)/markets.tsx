@@ -1,5 +1,5 @@
 import { useAppTheme, useThemeStyles } from '@/src/context/ThemeContext';
-import type { ThemeColors } from '@/src/lib/theme';
+import { getTabContentPadding, type ThemeColors } from '@/src/lib/theme';
 import { useCallback, useMemo, useState } from "react";
 import { SymbolView } from "expo-symbols";
 import {
@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MarketOptionsModal } from "@/src/components/MarketOptionsModal";
 import { MarketRow, MARKET_ROW_HEIGHT } from "@/src/components/MarketRow";
@@ -29,6 +29,7 @@ type Sort = (typeof SORT_OPTIONS)[number]["value"];
 export default function MarketsScreen() {
   const { colors: accountColors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
+  const insets = useSafeAreaInsets();
   const { snapshot, movements, loading, error, stale, paused, retryAt, reload } = useMarketCatalog();
   const { profile, loading: profileLoading, saving, error: profileError, reloadProfile, toggleWatchlist } = useProfile();
   const watchlistDisabled = profileLoading || saving || !profile;
@@ -301,7 +302,7 @@ export default function MarketsScreen() {
           refreshing={loading && snapshot !== null}
           onRefresh={() => void reload()}
           contentContainerStyle={
-            markets.length === 0 ? styles.emptyList : styles.list
+            [markets.length === 0 && styles.emptyList, { paddingBottom: getTabContentPadding(insets.bottom) }]
           }
           ListEmptyComponent={
             <View style={styles.empty}>
@@ -457,9 +458,8 @@ const createStyles = (accountColors: ThemeColors) => StyleSheet.create({
   errorText: { flex: 1, fontSize: 13, color: accountColors.danger, paddingVertical: 12 },
   retry: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
   retryLabel: { fontSize: 14, fontWeight: "600", color: accountColors.primary },
-  list: { paddingBottom: 152 },
   marketList: { flex: 1 },
-  emptyList: { flexGrow: 1, paddingBottom: 152 },
+  emptyList: { flexGrow: 1 },
   empty: {
     flex: 1,
     alignItems: "center",
