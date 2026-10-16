@@ -6,7 +6,7 @@ export const notificationsSupported = Platform.OS === 'ios' || Platform.OS === '
 export type NotificationPermission = 'granted' | 'provisional' | 'denied' | 'undetermined' | 'unsupported';
 export type NotificationChannel = 'signals' | 'price-alerts';
 const kind = 'kripto.signal';
-let presentationGuard: ((userId: string) => boolean) | null = null;
+let presentationGuard: ((userId: string, symbol: string) => boolean) | null = null;
 let pricePresentationGuard: ((userId: string, symbol: string) => boolean) | null = null;
 const granted = (settings: Notifications.NotificationPermissionsStatus) => settings.granted ||
   settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL ||
@@ -22,7 +22,7 @@ function configureHandler() {
     handleNotification: async (notification) => {
       const data = notification.request.content.data ?? {};
       const show = typeof data.userId === 'string' && AppState.currentState === 'active' && (
-        (data.kind === kind && presentationGuard?.(data.userId) === true) ||
+        (data.kind === kind && typeof data.symbol === 'string' && presentationGuard?.(data.userId, data.symbol) === true) ||
         (data.kind === 'price-alert' && typeof data.symbol === 'string' && pricePresentationGuard?.(data.userId, data.symbol) === true)
       );
       return { shouldShowBanner: show, shouldShowList: show, shouldPlaySound: show, shouldSetBadge: false };
@@ -30,7 +30,7 @@ function configureHandler() {
   });
 }
 
-export function configureSignalNotifications(guard: (userId: string) => boolean): () => void {
+export function configureSignalNotifications(guard: (userId: string, symbol: string) => boolean): () => void {
   presentationGuard = guard;
   configureHandler();
   return () => {
@@ -82,6 +82,9 @@ export async function requestNotificationPermission(channelId: NotificationChann
 }
 
 export async function sendSignalNotification(userId: string, signal: AssetSignal, isCurrent: () => boolean): Promise<void> {
+  if (!notificationsSupported || !isCurrent()) return;
+  await prepareNotificationChannel('signals');
+  if (!isCurrent()) return;
   const identifier = await Notifications.scheduleNotificationAsync({
     identifier: `${kind}.${userId}.${signal.symbol}.${signal.timestamp}.${signal.type}`,
     content: {

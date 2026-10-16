@@ -9,7 +9,7 @@ export function getNewSignals(signals: AssetSignal[], observed: NotificationStat
 
 export async function processSignalNotifications(
   userId: string, signals: AssetSignal[], watchlist: string[],
-  isCurrent: () => boolean, canSend: () => boolean,
+  isCurrent: () => boolean, canSend: (symbol: string) => boolean,
 ): Promise<{ permissionDenied: boolean }> {
   return withNotificationState(userId, async (state, save) => {
     if (!isCurrent()) return { permissionDenied: false };
@@ -18,11 +18,14 @@ export async function processSignalNotifications(
     for (const signal of signals) observed[signal.symbol] = Math.max(observed[signal.symbol] ?? 0, signal.timestamp);
     // Persist the observation before dispatch, so retries cannot send duplicate alerts.
     await save({ ...state, observed });
-    if (!state.enabled || !canSend() || candidates.length === 0) return { permissionDenied: false };
-    if (!await hasNotificationPermission()) return { permissionDenied: true };
+    if (!state.enabled || !candidates.some((signal) => canSend(signal.symbol))) return { permissionDenied: false };
+    const permission = await hasNotificationPermission();
+    if (!isCurrent()) return { permissionDenied: false };
+    if (!permission) return { permissionDenied: true };
     for (const signal of candidates) {
-      if (!canSend()) break;
-      await sendSignalNotification(userId, signal, canSend);
+      if (!isCurrent()) break;
+      if (!canSend(signal.symbol)) continue;
+      await sendSignalNotification(userId, signal, () => canSend(signal.symbol));
     }
     return { permissionDenied: false };
   });

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { getSignals, type AssetSignal } from '@/src/services/signalService';
 import { getSavedSignals, saveSignals } from '@/src/services/signalStorage';
 
@@ -14,11 +15,23 @@ export function useSignals(userId: string) {
   const [state, setState] = useState<SignalState>(() => initialState(userId));
   const active = useRef(false);
   const pending = useRef<AbortController | null>(null);
+  const foreground = useRef(AppState.currentState === 'active');
   const generation = useRef(0);
   const freshRevision = useRef(0);
 
   const load = useCallback((controller: AbortController, currentGeneration: number) => {
-    const current = () => active.current && generation.current === currentGeneration && !controller.signal.aborted;
+    const current = () => active.current && foreground.current && generation.current === currentGeneration && !controller.signal.aborted;
+    const timeout = setTimeout(() => {
+      if (!current() || pending.current !== controller) return;
+      pending.current = null;
+      controller.abort();
+      setState((stored) => ({
+        ...(stored.userId === userId ? stored : initialState(userId)),
+        loading: false, error: 'Signal request timed out. Please try again.',
+      }));
+    }, 15_000);
+    const clearRequestTimeout = () => clearTimeout(timeout);
+    controller.signal.addEventListener('abort', clearRequestTimeout, { once: true });
     void getSignals(controller.signal).then((result) => {
       if (!current()) return;
       const allFailed = result.signals.length === 0;
@@ -54,17 +67,26 @@ export function useSignals(userId: string) {
         loading: false, error: 'Unable to update market signals. Please try again.',
       }));
     }).finally(() => {
+      clearRequestTimeout();
+      controller.signal.removeEventListener('abort', clearRequestTimeout);
       if (pending.current === controller) pending.current = null;
     });
   }, [userId]);
 
-  useEffect(() => {
-    active.current = true;
-    freshRevision.current = 0;
-    const currentGeneration = ++generation.current;
+  const refresh = useCallback(() => {
+    if (!active.current || !foreground.current || pending.current) return;
     const controller = new AbortController();
     pending.current = controller;
-    const current = () => active.current && generation.current === currentGeneration && !controller.signal.aborted;
+    setState((stored) => ({ ...(stored.userId === userId ? stored : initialState(userId)), loading: true, error: null }));
+    load(controller, generation.current);
+  }, [load, userId]);
+
+  useEffect(() => {
+    active.current = true;
+    foreground.current = AppState.currentState === 'active';
+    freshRevision.current = 0;
+    const currentGeneration = ++generation.current;
+    const current = () => active.current && generation.current === currentGeneration;
 
     void getSavedSignals(userId).then((saved) => {
       if (!current() || freshRevision.current > 0 || !saved) return;
@@ -79,17 +101,27 @@ export function useSignals(userId: string) {
         cacheError: 'Saved signals could not be restored on this device. Live updates are still available.',
       }));
     });
-    load(controller, currentGeneration);
-    return () => { active.current = false; controller.abort(); pending.current?.abort(); };
-  }, [load, userId]);
 
-  const refresh = useCallback(() => {
-    if (!active.current || pending.current) return;
-    const controller = new AbortController();
-    pending.current = controller;
-    setState((stored) => ({ ...(stored.userId === userId ? stored : initialState(userId)), loading: true, error: null }));
-    load(controller, generation.current);
-  }, [load, userId]);
+    const subscription = AppState.addEventListener('change', (next) => {
+      const wasForeground = foreground.current;
+      foreground.current = next === 'active';
+      if (foreground.current) {
+        if (!wasForeground) refresh();
+      } else {
+        pending.current?.abort();
+        pending.current = null;
+        setState((stored) => ({ ...(stored.userId === userId ? stored : initialState(userId)), loading: false }));
+      }
+    });
+    if (foreground.current) refresh();
+    else setState((stored) => ({ ...(stored.userId === userId ? stored : initialState(userId)), loading: false }));
+    return () => {
+      active.current = false;
+      subscription.remove();
+      pending.current?.abort();
+      pending.current = null;
+    };
+  }, [refresh, userId]);
 
   return { ...(state.userId === userId ? state : initialState(userId)), refresh };
 }

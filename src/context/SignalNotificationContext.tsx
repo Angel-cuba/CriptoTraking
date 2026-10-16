@@ -1,5 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { AppState } from 'react-native';
+import { useProfile } from '@/src/hooks/useProfile';
 import { supabaseClient } from '@/src/lib/supabase';
 import { clearSignalNotifications, configureSignalNotifications, hasNotificationPermission, notificationsSupported, requestNotificationPermission } from '@/src/services/localNotificationService';
 import { getNotificationState, setNotificationsEnabled } from '@/src/services/signalNotificationStorage';
@@ -15,12 +16,18 @@ const Context = createContext<NotificationContextValue | null>(null);
 
 export function SignalNotificationProvider({ userId, children }: PropsWithChildren<{ userId: string }>) {
   const [settings, setSettings] = useState<Settings>({ enabled: false, permission: false, loading: true, ready: false, busy: false, error: null });
+  const { profile, loading: profileLoading, error: profileError } = useProfile();
+  const watchlist = useRef<readonly string[]>([]);
+  useLayoutEffect(() => {
+    watchlist.current = !profileLoading && !profileError ? profile?.watchlist ?? [] : [];
+  }, [profile, profileLoading, profileError]);
   const active = useRef(false);
   const sessionAlive = useRef(true);
   const enabled = useRef(false);
   const ready = useRef(false);
   const busy = useRef(false);
   const operation = useRef(0);
+  const notificationRevision = useRef(0);
 
   const load = useCallback(() => {
     if (busy.current) return;
@@ -44,19 +51,26 @@ export function SignalNotificationProvider({ userId, children }: PropsWithChildr
   useEffect(() => {
     active.current = true;
     sessionAlive.current = true;
-    const release = notificationsSupported ? configureSignalNotifications((owner) =>
-      active.current && sessionAlive.current && enabled.current && owner === userId) : () => {};
+    const release = notificationsSupported ? configureSignalNotifications((owner, symbol) =>
+      active.current && sessionAlive.current && enabled.current && owner === userId && watchlist.current.includes(symbol)) : () => {};
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
       sessionAlive.current = session?.user.id === userId;
-      if (!sessionAlive.current && notificationsSupported) void clearSignalNotifications(userId).catch(() => {});
+      if (!sessionAlive.current) {
+        notificationRevision.current += 1;
+        if (notificationsSupported) void clearSignalNotifications(userId).catch(() => {});
+      }
     });
-    const appState = AppState.addEventListener('change', (state) => { if (state === 'active') load(); });
+    const appState = AppState.addEventListener('change', (state) => {
+      if (state === 'active') load();
+      else notificationRevision.current += 1;
+    });
     load();
     return () => {
       active.current = false;
       enabled.current = false;
       ready.current = false;
       operation.current += 1;
+      notificationRevision.current += 1;
       subscription.unsubscribe();
       appState.remove();
       release();
@@ -72,6 +86,7 @@ export function SignalNotificationProvider({ userId, children }: PropsWithChildr
   const changeEnabled = useCallback(async (next: boolean) => {
     if (!notificationsSupported || !ready.current || busy.current || !sessionAlive.current) return;
     busy.current = true;
+    notificationRevision.current += 1;
     operation.current += 1;
     const previousEnabled = enabled.current;
     if (!next) enabled.current = false;
@@ -103,12 +118,14 @@ export function SignalNotificationProvider({ userId, children }: PropsWithChildr
     }
   }, [userId]);
 
-  const processSignals = useCallback(async (signals: AssetSignal[], watchlist: string[], isFocused: () => boolean) => {
+  const processSignals = useCallback(async (signals: AssetSignal[], trackedSymbols: string[], isFocused: () => boolean) => {
     if (!notificationsSupported || !ready.current || busy.current) return;
-    const current = () => active.current && sessionAlive.current && isFocused() && AppState.currentState === 'active';
-    const canSend = () => current() && enabled.current && !busy.current;
+    const revision = notificationRevision.current;
+    const current = () => active.current && sessionAlive.current && revision === notificationRevision.current &&
+      isFocused() && AppState.currentState === 'active';
+    const canSend = (symbol: string) => current() && enabled.current && !busy.current && watchlist.current.includes(symbol);
     try {
-      const result = await processSignalNotifications(userId, signals, watchlist, current, canSend);
+      const result = await processSignalNotifications(userId, signals, trackedSymbols, current, canSend);
       if (current()) setSettings((previous) => ({
         ...previous, permission: result.permissionDenied ? false : previous.permission,
         error: previous.error === 'Notifications could not be processed. Market signals remain available.' ? null : previous.error,

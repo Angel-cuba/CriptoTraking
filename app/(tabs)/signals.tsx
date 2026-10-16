@@ -35,7 +35,9 @@ function SignalsContent({ userId }: { userId: string }) {
 
   useEffect(() => {
     if (!notificationsReady || fromCache || loading || updatedAt === null || profileLoading || profileError || !profile) return;
-    void processSignals(signals, profile.watchlist, isFocused);
+    let current = true;
+    void processSignals(signals, profile.watchlist, () => current && isFocused());
+    return () => { current = false; };
   }, [notificationsReady, fromCache, loading, updatedAt, profileLoading, profileError, profile, signals, processSignals, isFocused]);
 
   const watchlist = profile?.watchlist ?? [];

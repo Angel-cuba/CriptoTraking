@@ -38,7 +38,7 @@ function ProfileContent({ user }: { user: User }) {
   const initial = (profile?.display_name || user.email || 'K').charAt(0).toUpperCase();
 
   async function signOut() {
-    if (logoutPending.current || saving) return;
+    if (logoutPending.current) return;
     logoutPending.current = true;
     setSigningOut(true);
     setLogoutError(null);
@@ -70,10 +70,21 @@ function ProfileContent({ user }: { user: User }) {
           </View>
         </View>
         <AppearanceSettings />
-        {loading ? (
-          <View style={accountStyles.card}><ActivityIndicator color={accountColors.primary} /><Text style={accountStyles.body}>Loading your preferences…</Text></View>
-        ) : profile ? (
-          <ProfileEditor profile={profile} saving={saving} disabled={signingOut} error={error} saveProfile={saveProfile} toggleWatchlist={toggleWatchlist} />
+        {profile ? (
+          <>
+            {loading ? (
+              <View style={accountStyles.card}>
+                <ActivityIndicator color={accountColors.primary} accessibilityLabel="Refreshing profile" />
+                <Text style={accountStyles.body}>Updating your preferences. Your last loaded details are shown below.</Text>
+              </View>
+            ) : null}
+            <ProfileEditor profile={profile} saving={saving} disabled={loading || signingOut} error={error} saveProfile={saveProfile} toggleWatchlist={toggleWatchlist} />
+          </>
+        ) : loading ? (
+          <View style={accountStyles.card}>
+            <ActivityIndicator color={accountColors.primary} accessibilityLabel="Loading profile" />
+            <Text style={accountStyles.body}>Loading your preferences…</Text>
+          </View>
         ) : (
           <View style={accountStyles.card}><Feedback message={error || 'Your profile is unavailable.'} /><ActionButton title="Retry loading profile" onPress={() => void reloadProfile()} disabled={signingOut} /></View>
         )}
@@ -82,7 +93,7 @@ function ProfileContent({ user }: { user: User }) {
           <Text style={accountStyles.sectionTitle}>Session</Text>
           <Text style={accountStyles.body}>You will stay signed in on this device until you sign out.</Text>
           <Feedback message={logoutError} />
-          <ActionButton title="Sign out" secondary danger loading={signingOut} disabled={saving} onPress={() => void signOut()} />
+          <ActionButton title="Sign out" secondary danger loading={signingOut} onPress={() => void signOut()} />
         </View>
       </View>
     </AccountScreen>

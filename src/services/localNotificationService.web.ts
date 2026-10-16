@@ -3,7 +3,7 @@ export type NotificationPermission = 'granted' | 'provisional' | 'denied' | 'und
 export type NotificationChannel = 'signals' | 'price-alerts';
 
 export const notificationsSupported = false;
-export function configureSignalNotifications(_guard: (userId: string) => boolean): () => void { return () => {}; }
+export function configureSignalNotifications(_guard: (userId: string, symbol: string) => boolean): () => void { return () => {}; }
 export function configurePriceAlertNotifications(_guard: (userId: string, symbol: string) => boolean): () => void { return () => {}; }
 export async function getNotificationPermission(): Promise<NotificationPermission> { return 'unsupported'; }
 export async function prepareNotificationChannel(_channelId: NotificationChannel): Promise<void> {}
