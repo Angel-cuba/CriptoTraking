@@ -1,5 +1,5 @@
 import { ProfileProvider } from '@/src/context/ProfileContext';
-import { MarketCatalogProvider } from '@/src/context/MarketCatalogContext';
+import { PriceAlertProvider } from '@/src/context/PriceAlertContext';
 import { SignalNotificationProvider } from '@/src/context/SignalNotificationContext';
 import { useAuth } from '@/src/hooks/useAuth';
 import { Tabs } from 'expo-router';
@@ -12,7 +12,7 @@ export default function TabLayout() {
   return (
     <ProfileProvider key={user.id} userId={user.id}>
       <SignalNotificationProvider key={user.id} userId={user.id}>
-        <MarketCatalogProvider key={user.id}>
+        <PriceAlertProvider key={user.id} userId={user.id}>
           <Tabs initialRouteName="profile" screenOptions={{ headerShown: false, tabBarActiveTintColor: accountColors.primary, tabBarStyle: { borderTopColor: accountColors.border } }}>
             <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color }) => (
               <SymbolView name={{ ios: 'person.crop.circle', android: 'account_circle', web: 'account_circle' }} tintColor={color} size={26} />
@@ -24,7 +24,7 @@ export default function TabLayout() {
               <SymbolView name={{ ios: 'waveform.path.ecg', android: 'monitoring', web: 'monitoring' }} tintColor={color} size={26} />
             ) }} />
           </Tabs>
-        </MarketCatalogProvider>
+        </PriceAlertProvider>
       </SignalNotificationProvider>
     </ProfileProvider>
   );

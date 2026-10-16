@@ -11,7 +11,7 @@ export const DEFAULT_PRICE_ALERT_SETTINGS = {
   cooldownMs: 5 * 60_000,
 };
 
-const MAX_OBSERVATION_AGE_MS = 120_000;
+export const MAX_PRICE_OBSERVATION_AGE_MS = 120_000;
 
 // Call on pause or cold start; keep cooldown and the source watermark.
 export function resetPriceAlertBaseline(state: PriceAlertState): PriceAlertState {
@@ -61,7 +61,7 @@ export function evaluatePriceAlert({ rule, observation, previous, isWatched, now
     !Number.isFinite(observation.receivedAt) || observation.receivedAt < 0 ||
     !Number.isFinite(now) || now < observation.receivedAt
   ) return result("invalid-price");
-  if (now - observation.receivedAt >= MAX_OBSERVATION_AGE_MS) return result("stale");
+  if (now - observation.receivedAt >= MAX_PRICE_OBSERVATION_AGE_MS) return result("stale");
 
   const before = state.lastObservation;
   if (before && (
@@ -71,7 +71,7 @@ export function evaluatePriceAlert({ rule, observation, previous, isWatched, now
 
   if (
     state.referencePrice === null || !before ||
-    observation.receivedAt - before.receivedAt > MAX_OBSERVATION_AGE_MS
+    observation.receivedAt - before.receivedAt > MAX_PRICE_OBSERVATION_AGE_MS
   ) {
     state.referencePrice = observation.price;
     state.lastObservation = { ...observation };

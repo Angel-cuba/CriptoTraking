@@ -19,7 +19,12 @@ type PendingRequest = { controller: AbortController; timeout: ReturnType<typeof 
 type MarketCatalogState = MarketState & { reload: () => void };
 export const MarketCatalogContext = createContext<MarketCatalogState | undefined>(undefined);
 
-export function MarketCatalogProvider({ children }: PropsWithChildren) {
+type MarketCatalogProviderProps = PropsWithChildren<{
+  onSnapshot?: (snapshot: MarketSnapshot) => void;
+  onPause?: () => void;
+}>;
+
+export function MarketCatalogProvider({ children, onSnapshot, onPause }: MarketCatalogProviderProps) {
   const [state, setState] = useState<MarketState>(() => ({
     snapshot: null, loading: true, error: null, stale: false, paused: false, retryAt: null,
     movements: new Map(),
@@ -95,6 +100,7 @@ export function MarketCatalogProvider({ children }: PropsWithChildren) {
         observations = comparison.observations;
         setState((previous) => ({ ...previous, snapshot, movements: comparison.movements, loading: false, error: null, retryAt: null }));
         updateFreshness();
+        onSnapshot?.(snapshot);
       }).catch((failure: unknown) => {
         if (!current()) return;
         if (failure instanceof MarketRateLimitError) {
@@ -128,6 +134,7 @@ export function MarketCatalogProvider({ children }: PropsWithChildren) {
         pollTimer = setInterval(loadMarkets, REFRESH_INTERVAL_MS);
       } else {
         cancelRequest();
+        onPause?.();
       }
     }
 
@@ -144,8 +151,9 @@ export function MarketCatalogProvider({ children }: PropsWithChildren) {
       subscription.remove();
       cancelRequest();
       refresh.current = () => {};
+      onPause?.();
     };
-  }, []);
+  }, [onSnapshot, onPause]);
 
   const value = useMemo(() => ({ ...state, reload }), [state, reload]);
   return <MarketCatalogContext.Provider value={value}>{children}</MarketCatalogContext.Provider>;

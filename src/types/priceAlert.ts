@@ -46,3 +46,10 @@ export type PriceAlertResult = {
     | "below-threshold"
     | "alert";
 };
+
+export type PriceAlertHistory = {
+  version: 1;
+  userId: string;
+  states: PriceAlertState[];
+  events: PriceAlertEvent[];
+};
