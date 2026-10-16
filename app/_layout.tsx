@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { AppThemeProvider, useAppTheme } from '@/src/context/ThemeContext';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Text, View } from 'react-native';
 import 'react-native-reanimated';
@@ -9,6 +9,7 @@ import { AccountScreen, useAccountStyles, Feedback } from '@/src/components/Acco
 import { ActionButton } from '@/src/components/ActionButton';
 import { AuthProvider } from '@/src/context/AuthContext';
 import { useAuth } from '@/src/hooks/useAuth';
+import { listenForPriceAlertNotificationTap } from '@/src/services/priceAlertNotificationService';
 
 export { ErrorBoundary } from 'expo-router';
 export const unstable_settings = { initialRouteName: 'index' };
@@ -37,6 +38,11 @@ function RootNavigator() {
   const { colors: accountColors } = useAppTheme();
   const accountStyles = useAccountStyles();
   const { session, loading, error, retry } = useAuth();
+  const userId = session?.user.id;
+  useEffect(() => {
+    if (!userId || loading || error) return;
+    return listenForPriceAlertNotificationTap(userId, () => router.navigate('/alerts'));
+  }, [userId, loading, error]);
   if (loading || error) {
     return (
       <AccountScreen centered>

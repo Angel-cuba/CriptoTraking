@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Linking, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PriceAlertRow } from '@/src/components/PriceAlertRow';
@@ -21,10 +21,13 @@ const FILTERS = [
 export default function AlertsScreen() {
   const { colors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
-  const { events, loading, error, enabled, pendingEnabled, savingPreference, setEnabled, retry } = usePriceAlerts();
+  const { events, loading, error, enabled, pendingEnabled, savingPreference, setEnabled, retry,
+    notificationsEnabled, pendingNotificationsEnabled, notificationBusy, notificationSupported,
+    permission, notificationError, setNotificationsEnabled } = usePriceAlerts();
   const market = useMarketCatalog();
   const { profile, loading: profileLoading, saving, error: profileError, reloadProfile } = useProfile();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['value']>('all');
+  const [settingsError, setSettingsError] = useState<string | null>(null);
   const assets = useMemo(() => new Map(market.snapshot?.assets.map((asset) => [asset.symbol, asset])), [market.snapshot]);
   const visibleEvents = useMemo(() => events
     .filter((event) => filter === 'all' || event.direction === filter)
@@ -54,10 +57,29 @@ export default function AlertsScreen() {
     ? savingPreference ? 'Saving preference…' : pendingEnabled ? 'Enable not saved' : 'Paused for this session; pause not saved'
     : enabled === null ? loading ? 'Loading preference…' : 'Preference unavailable'
       : enabled ? 'Enabled on this device' : 'Paused on this device';
-  const preferenceDisabled = loading || savingPreference || enabled === null;
+  const preferenceDisabled = loading || savingPreference || notificationBusy || enabled === null;
+  const notifying = notificationsEnabled === true && pendingNotificationsEnabled === null;
+  const notificationDisabled = !notificationSupported || loading || savingPreference || notificationBusy || notificationsEnabled === null;
+  let notificationStatus = notificationsEnabled ? 'On for new price alerts' : 'Off on this device';
+  if (!notificationSupported) notificationStatus = 'Available in the iOS and Android app';
+  else if (notificationBusy) notificationStatus = 'Checking permission…';
+  else if (pendingNotificationsEnabled !== null) notificationStatus = savingPreference ? 'Saving preference…'
+    : pendingNotificationsEnabled ? 'Enable not saved' : 'Off for this session; change not saved';
+  else if (notificationsEnabled === null) notificationStatus = loading ? 'Loading preference…' : 'Preference unavailable';
+  else if (permission === 'denied') notificationStatus = 'System permission denied';
+  else if (notifying && permission === 'provisional') notificationStatus = 'On with quiet delivery';
+  else if (notifying && (permission === 'undetermined' || permission === 'unknown')) notificationStatus = 'System permission needs checking';
+  else if (notifying && !monitoring) notificationStatus = 'On; price monitoring is paused';
+
+  const openSystemSettings = () => {
+    setSettingsError(null);
+    void Linking.openSettings().catch(() => setSettingsError('System settings could not be opened. Please try again.'));
+  };
 
   const failures = [
     { key: 'alerts', message: error, retry, disabled: loading || savingPreference, label: 'Retry alert storage' },
+    { key: 'notifications', message: notificationError, retry, disabled: loading || savingPreference || notificationBusy, label: 'Check notification status' },
+    { key: 'settings', message: settingsError, retry: openSystemSettings, disabled: false, label: 'Retry system settings' },
     { key: 'markets', message: market.error, retry: market.reload,
       disabled: market.loading || market.paused || market.retryAt !== null, label: 'Retry market update' },
     { key: 'profile', message: profileError, retry: () => void reloadProfile(),
@@ -115,6 +137,32 @@ export default function AlertsScreen() {
                 </View>
                 <Text style={styles.caption}>Checks run while Kripto is active. Pausing keeps your history.</Text>
               </View>
+              <View style={styles.monitoringCard}>
+                <View style={styles.monitoringHeader}>
+                  <View style={styles.monitoringCopy}>
+                    <Text style={styles.status}>Price notifications</Text>
+                    <Text style={styles.caption} accessibilityLiveRegion="polite">{notificationStatus}</Text>
+                  </View>
+                  {notificationBusy ? <ActivityIndicator color={colors.primary} accessibilityLabel="Checking notification permission" /> : null}
+                  <View style={styles.toggle}>
+                    <Switch value={notifying} onValueChange={(next) => void setNotificationsEnabled(next)} disabled={notificationDisabled}
+                      accessibilityLabel="Price alert notifications"
+                      accessibilityHint="Allow local notifications for new price alerts on this device."
+                      trackColor={{ false: colors.muted, true: colors.action }}
+                      thumbColor={notifying ? colors.onPrimary : colors.surface}
+                      ios_backgroundColor={colors.muted}
+                      {...(Platform.OS === 'web' ? { activeThumbColor: colors.onPrimary } : {})}
+                      hitSlop={6} style={styles.switchControl} />
+                  </View>
+                </View>
+                {notificationSupported ? <Text style={styles.caption}>Only new alerts are notified while Kripto is active. Your history is never replayed.</Text> : null}
+                {notificationSupported && (permission === 'denied' || permission === 'provisional') ? (
+                  <Pressable onPress={openSystemSettings} style={styles.settings} accessibilityRole="button" accessibilityLabel="Open notification system settings">
+                    <SymbolView name={{ ios: 'gearshape', android: 'settings', web: 'settings' }} tintColor={colors.primary} size={17} />
+                    <Text style={styles.retryLabel}>System settings</Text>
+                  </Pressable>
+                ) : null}
+              </View>
               <View style={styles.summary}>
                 <Text style={styles.status} accessibilityLiveRegion="polite">{status}</Text>
                 {market.snapshot ? (
@@ -135,7 +183,7 @@ export default function AlertsScreen() {
                     accessibilityLabel={failure.label} accessibilityState={{ disabled: failure.disabled }} style={styles.retry}>
                     <SymbolView name={{ ios: 'arrow.clockwise', android: 'refresh', web: 'refresh' }}
                       tintColor={failure.disabled ? colors.muted : colors.primary} size={17} />
-                    <Text style={[styles.retryLabel, failure.disabled && styles.disabledLabel]}>Retry</Text>
+                    <Text style={[styles.retryLabel, failure.disabled && styles.disabledLabel]}>{failure.key === 'notifications' ? 'Check status' : 'Retry'}</Text>
                   </Pressable>
                 </View>
               ))}
@@ -192,6 +240,7 @@ const createStyles = (colors: ThemeColors) => StyleSheet.create({
   monitoringCopy: { flex: 1, gap: 5 },
   toggle: { minWidth: 56, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   switchControl: { width: 52, height: 32 },
+  settings: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start' },
   rules: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   rule: { fontSize: 12, lineHeight: 18, color: colors.primary, backgroundColor: colors.primarySoft, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
   summary: { padding: 18, gap: 6, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },

@@ -17,6 +17,8 @@ export type PriceAlertState = {
   lastEventAt: number | null;
 };
 
+export type PriceAlertNotificationStatus = 'pending' | 'scheduled' | 'permission-denied' | 'disabled' | 'failed' | 'unsupported' | 'skipped' | 'unknown';
+
 export type PriceAlertEvent = {
   id: string;
   userId: string;
@@ -28,6 +30,7 @@ export type PriceAlertEvent = {
   sourceCloseTime: number;
   receivedAt: number;
   createdAt: number;
+  notificationStatus?: PriceAlertNotificationStatus;
 };
 
 export type PriceAlertResult = {
@@ -48,9 +51,10 @@ export type PriceAlertResult = {
 };
 
 export type PriceAlertHistory = {
-  version: 2;
+  version: 3;
   userId: string;
   enabled: boolean;
+  notificationsEnabled: boolean;
   states: PriceAlertState[];
   events: PriceAlertEvent[];
 };

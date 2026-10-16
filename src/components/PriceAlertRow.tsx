@@ -5,7 +5,18 @@ import { AssetAvatar } from '@/src/components/AssetAvatar';
 import { useAppTheme, useThemeStyles } from '@/src/context/ThemeContext';
 import type { ThemeColors } from '@/src/lib/theme';
 import type { MarketSymbol } from '@/src/types/market';
-import type { PriceAlertEvent } from '@/src/types/priceAlert';
+import type { PriceAlertEvent, PriceAlertNotificationStatus } from '@/src/types/priceAlert';
+
+const DELIVERY_LABELS: Record<PriceAlertNotificationStatus, string> = {
+  pending: 'Notification status unconfirmed',
+  unknown: 'Notification status unconfirmed',
+  scheduled: 'Notification scheduled',
+  'permission-denied': 'Notification permission denied',
+  disabled: 'Price notifications off',
+  failed: 'Notification scheduling failed',
+  unsupported: 'Notifications unavailable',
+  skipped: 'Notification skipped',
+};
 
 function formatPrice(price: number) {
   if (price < 0.0000001) return price.toExponential(4);
@@ -55,6 +66,7 @@ export function PriceAlertRow({ event, asset }: { event: PriceAlertEvent; asset?
             hour: '2-digit', minute: '2-digit', second: '2-digit',
           })}
         </Text>
+        {event.notificationStatus ? <Text style={styles.caption}>{DELIVERY_LABELS[event.notificationStatus]}</Text> : null}
       </View>
     </View>
   );

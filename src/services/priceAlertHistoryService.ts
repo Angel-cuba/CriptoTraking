@@ -1,11 +1,25 @@
 import type { MarketPriceObservation, MarketSnapshot } from "@/src/types/market";
-import type { PriceAlertHistory } from "@/src/types/priceAlert";
+import type { PriceAlertHistory, PriceAlertNotificationStatus } from "@/src/types/priceAlert";
 import { DEFAULT_PRICE_ALERT_SETTINGS, MAX_PRICE_OBSERVATION_AGE_MS, evaluatePriceAlert, resetPriceAlertBaseline } from "@/src/services/priceAlertService";
 
 export const MAX_PRICE_ALERT_EVENTS = 100;
 
 export function createPriceAlertHistory(userId: string): PriceAlertHistory {
-  return { version: 2, userId, enabled: true, states: [], events: [] };
+  return { version: 3, userId, enabled: true, notificationsEnabled: false, states: [], events: [] };
+}
+
+export function restorePriceAlertHistory(history: PriceAlertHistory): PriceAlertHistory {
+  const restored = resetPriceAlertHistory(history);
+  if (!restored.events.some((event) => event.notificationStatus === 'pending')) return restored;
+  // An interrupted attempt may already have reached the OS. Never replay it.
+  return { ...restored, events: restored.events.map((event) => event.notificationStatus === 'pending'
+    ? { ...event, notificationStatus: 'unknown' } : event) };
+}
+
+export function updatePriceAlertDelivery(history: PriceAlertHistory, eventId: string, status: PriceAlertNotificationStatus): PriceAlertHistory {
+  const event = history.events.find((item) => item.id === eventId);
+  if (!event || event.notificationStatus === status) return history;
+  return { ...history, events: history.events.map((item) => item.id === eventId ? { ...item, notificationStatus: status } : item) };
 }
 
 export function resetPriceAlertHistory(history: PriceAlertHistory, symbols?: Set<string>): PriceAlertHistory {
@@ -66,7 +80,7 @@ export function applyPriceAlertSnapshot(
     states.push(accepted || !before ? result.state : before);
     if (accepted || !before) changed = true;
     if (result.event && !eventIds.has(result.event.id)) {
-      events.push(result.event);
+      events.push({ ...result.event, notificationStatus: history.notificationsEnabled ? 'pending' : 'disabled' });
       eventIds.add(result.event.id);
     }
   }
@@ -82,10 +96,13 @@ const validObservation = (value: MarketPriceObservation | null) => value === nul
 
 export function parsePriceAlertHistory(stored: string | null, userId: string): PriceAlertHistory {
   if (stored === null) return createPriceAlertHistory(userId);
-  const history = JSON.parse(stored) as Omit<PriceAlertHistory, "version" | "enabled"> & { version: 1 | 2; enabled?: boolean };
+  const history = JSON.parse(stored) as Omit<PriceAlertHistory, 'version' | 'enabled' | 'notificationsEnabled'> & {
+    version: 1 | 2 | 3; enabled?: boolean; notificationsEnabled?: boolean;
+  };
   if (
-    !history || (history.version !== 1 && history.version !== 2) || history.userId !== userId ||
-    (history.version === 2 && typeof history.enabled !== "boolean") ||
+    !history || ![1, 2, 3].includes(history.version) || history.userId !== userId ||
+    (history.version !== 1 && typeof history.enabled !== 'boolean') ||
+    (history.version === 3 && typeof history.notificationsEnabled !== 'boolean') ||
     !Array.isArray(history.states) || !Array.isArray(history.events) ||
     history.events.length > MAX_PRICE_ALERT_EVENTS ||
     !history.states.every((state) => state && state.userId === userId &&
@@ -100,9 +117,11 @@ export function parsePriceAlertHistory(stored: string | null, userId: string): P
       validPrice(event.price) && validPrice(event.referencePrice) &&
       Number.isFinite(event.changePercent) && event.changePercent !== 0 &&
       event.direction === (event.changePercent > 0 ? "up" : "down") &&
+      (event.notificationStatus === undefined || ['pending', 'scheduled', 'permission-denied', 'disabled', 'failed', 'unsupported', 'skipped', 'unknown'].includes(event.notificationStatus)) &&
       validTime(event.sourceCloseTime) && validTime(event.receivedAt) && validTime(event.createdAt) && event.createdAt >= event.receivedAt) ||
     new Set(history.states.map((state) => state.symbol)).size !== history.states.length ||
     new Set(history.events.map((event) => event.id)).size !== history.events.length
   ) throw new Error("Stored price alert history is invalid. Existing data has not been replaced.");
-  return { ...history, version: 2, enabled: history.version === 1 || history.enabled === true };
+  return { ...history, version: 3, enabled: history.version === 1 || history.enabled === true,
+    notificationsEnabled: history.version === 3 && history.notificationsEnabled === true };
 }
