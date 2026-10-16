@@ -1,0 +1,167 @@
+import { useMemo, useState } from 'react';
+import { Link } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { PriceAlertRow } from '@/src/components/PriceAlertRow';
+import { useAppTheme, useThemeStyles } from '@/src/context/ThemeContext';
+import { useMarketCatalog } from '@/src/hooks/useMarketCatalog';
+import { usePriceAlerts } from '@/src/hooks/usePriceAlerts';
+import { useProfile } from '@/src/hooks/useProfile';
+import type { ThemeColors } from '@/src/lib/theme';
+
+const FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'up', label: 'Up' },
+  { value: 'down', label: 'Down' },
+] as const;
+
+export default function AlertsScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemeStyles(createStyles);
+  const { events, loading, error, retry } = usePriceAlerts();
+  const market = useMarketCatalog();
+  const { profile, loading: profileLoading, saving, error: profileError, reloadProfile } = useProfile();
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]['value']>('all');
+  const assets = useMemo(() => new Map(market.snapshot?.assets.map((asset) => [asset.symbol, asset])), [market.snapshot]);
+  const visibleEvents = useMemo(() => events
+    .filter((event) => filter === 'all' || event.direction === filter)
+    .sort((a, b) => b.receivedAt - a.receivedAt || b.createdAt - a.createdAt), [events, filter]);
+
+  let status = 'Price data current';
+  if (error) status = 'Alert storage unavailable';
+  else if (loading) status = 'Loading alert history';
+  else if (!profile) status = profileLoading ? 'Loading watchlist' : 'Watchlist unavailable';
+  else if (profile.watchlist.length === 0) status = 'No followed pairs';
+  else if (market.paused) status = 'Updates paused';
+  else if (market.retryAt !== null) status = 'Waiting for the market provider';
+  else if (market.error) status = 'Market update failed';
+  else if (market.stale) status = 'Price data outdated';
+  else if (!market.snapshot) status = 'Waiting for prices';
+
+  let emptyTitle = 'No price alerts yet';
+  if (events.length > 0) emptyTitle = filter === 'up' ? 'No upward alerts' : 'No downward alerts';
+  else if (error) emptyTitle = 'Alert history unavailable';
+  else if (!profile && !profileLoading) emptyTitle = 'Watchlist unavailable';
+  else if (profile?.watchlist.length === 0) emptyTitle = 'No followed pairs';
+  const initialLoading = loading || (profileLoading && !profile && events.length === 0);
+
+  const failures = [
+    { key: 'alerts', message: error, retry, disabled: loading, label: 'Retry alert storage' },
+    { key: 'markets', message: market.error, retry: market.reload,
+      disabled: market.loading || market.paused || market.retryAt !== null, label: 'Retry market update' },
+    { key: 'profile', message: profileError, retry: () => void reloadProfile(),
+      disabled: profileLoading || saving, label: 'Retry watchlist', hidden: Boolean(profile) },
+  ];
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <Text style={styles.brand}>KRIPTO</Text>
+          <Text style={styles.title} accessibilityRole="header">Alerts</Text>
+          <Text style={styles.subtitle}>Your price movement history.</Text>
+        </View>
+        <View style={styles.filters} accessibilityRole="radiogroup" accessibilityLabel="Alert direction">
+          {FILTERS.map((option) => (
+            <Pressable key={option.value} onPress={() => setFilter(option.value)}
+              accessibilityRole="radio" accessibilityLabel={`${option.label} alerts`}
+              accessibilityState={{ checked: filter === option.value }} aria-checked={filter === option.value}
+              style={[styles.filter, filter === option.value && styles.selectedFilter]}>
+              <Text style={[styles.filterLabel, filter === option.value && styles.selectedFilterLabel]}>{option.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <FlatList
+          style={styles.list}
+          data={visibleEvents}
+          extraData={colors}
+          keyExtractor={(event) => event.id}
+          renderItem={({ item }) => <PriceAlertRow event={item} asset={assets.get(item.symbol)} />}
+          initialNumToRender={8}
+          ListHeaderComponent={
+            <View style={styles.listHeader}>
+              <View style={styles.summary}>
+                <Text style={styles.status} accessibilityLiveRegion="polite">{status}</Text>
+                {market.snapshot ? (
+                  <Text style={styles.caption}>
+                    {market.stale ? 'Outdated price update' : 'Last price update'} {new Date(market.snapshot.receivedAt).toLocaleTimeString([], {
+                      hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    })}
+                  </Text>
+                ) : null}
+                <Text style={styles.caption}>
+                  {visibleEvents.length}{filter !== 'all' ? ` of ${events.length}` : ''} {events.length === 1 ? 'alert' : 'alerts'} on this device
+                </Text>
+              </View>
+              {failures.filter((failure) => failure.message && !failure.hidden).map((failure) => (
+                <View key={failure.key} style={styles.error} accessibilityRole="alert">
+                  <Text style={styles.errorText}>{failure.message}</Text>
+                  <Pressable onPress={failure.retry} disabled={failure.disabled} accessibilityRole="button"
+                    accessibilityLabel={failure.label} accessibilityState={{ disabled: failure.disabled }} style={styles.retry}>
+                    <SymbolView name={{ ios: 'arrow.clockwise', android: 'refresh', web: 'refresh' }}
+                      tintColor={failure.disabled ? colors.muted : colors.primary} size={17} />
+                    <Text style={[styles.retryLabel, failure.disabled && styles.disabledLabel]}>Retry</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          }
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              {initialLoading ? <ActivityIndicator color={colors.primary} size="large" accessibilityLabel="Loading alerts" /> : (
+                <>
+                  <View style={styles.emptyIcon}>
+                    <SymbolView name={{ ios: 'bell', android: 'notifications_none', web: 'notifications_none' }} tintColor={colors.accent} size={28} />
+                  </View>
+                  <Text style={styles.emptyTitle}>{emptyTitle}</Text>
+                  {events.length > 0 && filter !== 'all' ? (
+                    <Pressable onPress={() => setFilter('all')} style={styles.retry} accessibilityRole="button" accessibilityLabel="Show all alerts">
+                      <Text style={styles.retryLabel}>Show all alerts</Text>
+                    </Pressable>
+                  ) : profile?.watchlist.length === 0 ? (
+                    <Link href="/markets" style={styles.marketLink}>Browse markets</Link>
+                  ) : !error && profile ? (
+                    <Text style={styles.emptyDescription}>New movements from your watchlist appear here while Kripto is active.</Text>
+                  ) : null}
+                </>
+              )}
+            </View>
+          }
+          contentContainerStyle={styles.listContent}
+        />
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const createStyles = (colors: ThemeColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  content: { flex: 1, width: '100%', maxWidth: 688, alignSelf: 'center' },
+  header: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 20, gap: 7 },
+  brand: { fontSize: 12, fontWeight: '700', letterSpacing: 1.8, color: colors.primary },
+  title: { fontSize: 30, fontWeight: '700', color: colors.text },
+  subtitle: { fontSize: 14, lineHeight: 21, color: colors.muted },
+  caption: { fontSize: 12, lineHeight: 18, color: colors.muted },
+  filters: { flexDirection: 'row', marginHorizontal: 20, marginBottom: 18, borderRadius: 18, padding: 4, gap: 4, backgroundColor: colors.surface },
+  filter: { flex: 1, minWidth: 0, minHeight: 44, paddingHorizontal: 4, justifyContent: 'center', alignItems: 'center', borderRadius: 14 },
+  selectedFilter: { backgroundColor: colors.primarySoft },
+  filterLabel: { fontSize: 14, color: colors.muted, fontWeight: '600' },
+  selectedFilterLabel: { color: colors.primary },
+  list: { flex: 1 },
+  listContent: { flexGrow: 1, paddingBottom: 152 },
+  listHeader: { paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
+  summary: { padding: 18, gap: 6, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  status: { fontSize: 15, fontWeight: '600', color: colors.text },
+  error: { padding: 16, borderRadius: 16, backgroundColor: colors.dangerSoft, gap: 4 },
+  errorText: { fontSize: 13, lineHeight: 19, color: colors.danger },
+  retry: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center', paddingHorizontal: 8 },
+  retryLabel: { fontSize: 14, fontWeight: '600', color: colors.primary },
+  disabledLabel: { color: colors.muted },
+  empty: { flexGrow: 1, minHeight: 240, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12 },
+  emptyIcon: { width: 64, height: 64, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.elevated, borderRadius: 22 },
+  emptyTitle: { fontSize: 18, fontWeight: '600', color: colors.text, textAlign: 'center' },
+  emptyDescription: { fontSize: 14, lineHeight: 21, color: colors.muted, textAlign: 'center', maxWidth: 320 },
+  marketLink: { minHeight: 44, paddingVertical: 12, color: colors.primary, fontSize: 14, fontWeight: '600' },
+});

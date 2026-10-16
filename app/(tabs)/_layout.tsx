@@ -37,14 +37,17 @@ export default function TabLayout() {
               shadowOpacity: mode === 'dark' ? 0.3 : 0.1, shadowRadius: 20, elevation: 8,
             },
           }}>
-            <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color }) => (
-              <SymbolView name={{ ios: 'person.crop.circle', android: 'account_circle', web: 'account_circle' }} tintColor={color} size={23} />
-            ) }} />
             <Tabs.Screen name="markets" options={{ title: 'Markets', tabBarIcon: ({ color }) => (
               <SymbolView name={{ ios: 'chart.bar.xaxis', android: 'bar_chart', web: 'bar_chart' }} tintColor={color} size={23} />
             ) }} />
             <Tabs.Screen name="signals" options={{ title: 'Signals', tabBarIcon: ({ color }) => (
               <SymbolView name={{ ios: 'waveform.path.ecg', android: 'monitoring', web: 'monitoring' }} tintColor={color} size={23} />
+            ) }} />
+            <Tabs.Screen name="alerts" options={{ title: 'Alerts', tabBarIcon: ({ color }) => (
+              <SymbolView name={{ ios: 'bell', android: 'notifications_none', web: 'notifications_none' }} tintColor={color} size={23} />
+            ) }} />
+            <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color }) => (
+              <SymbolView name={{ ios: 'person.crop.circle', android: 'account_circle', web: 'account_circle' }} tintColor={color} size={23} />
             ) }} />
           </Tabs>
         </PriceAlertProvider>
