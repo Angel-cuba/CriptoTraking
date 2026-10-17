@@ -26,7 +26,7 @@ import {
 import { MarketSuggestions } from "@/src/components/MarketSuggestions";
 import { useMarketCatalog } from "@/src/hooks/useMarketCatalog";
 import { useProfile } from "@/src/hooks/useProfile";
-import type { MarketAsset } from "@/src/types/market";
+import type { MarketAsset, MarketSnapshot } from "@/src/types/market";
 
 const SORT_OPTIONS = [
   { value: "name", label: "Asset A-Z" },
@@ -103,6 +103,7 @@ export default function MarketsScreen() {
   const [search, setSearch] = useState("");
   const [quote, setQuote] = useState("USDT");
   const [sort, setSort] = useState<Sort>("name");
+  const [sortSnapshot, setSortSnapshot] = useState<MarketSnapshot | null>(null);
   const [menu, setMenu] = useState<"quote" | "sort" | null>(null);
   const [watchlistOnly, setWatchlistOnly] = useState(false);
 
@@ -143,16 +144,24 @@ export default function MarketsScreen() {
         asset.symbol.toUpperCase().includes(query),
     );
 
+    const ranking = new Map(
+      sortSnapshot?.assets.map((asset) => [
+        asset.symbol,
+        asset.ticker?.changePercent24h,
+      ]),
+    );
     return filtered.sort((a, b) => {
       const alphabetical = a.symbol.localeCompare(b.symbol);
       if (sort === "name") return alphabetical;
-      if (!a.ticker && !b.ticker) return alphabetical;
-      if (!a.ticker) return 1;
-      if (!b.ticker) return -1;
-      const difference = b.ticker.changePercent24h - a.ticker.changePercent24h;
+      const aChange = ranking.get(a.symbol);
+      const bChange = ranking.get(b.symbol);
+      if (aChange === undefined && bChange === undefined) return alphabetical;
+      if (aChange === undefined) return 1;
+      if (bChange === undefined) return -1;
+      const difference = bChange - aChange;
       return (sort === "gainers" ? difference : -difference) || alphabetical;
     });
-  }, [snapshot, search, quote, sort, watchlistOnly, watched]);
+  }, [snapshot, search, quote, sort, sortSnapshot, watchlistOnly, watched]);
 
   const options =
     menu === "quote"
@@ -164,7 +173,10 @@ export default function MarketsScreen() {
       : SORT_OPTIONS.map((option) => ({
           label: option.label,
           selected: sort === option.value,
-          onSelect: () => setSort(option.value),
+          onSelect: () => {
+            setSort(option.value);
+            setSortSnapshot(option.value === "name" ? null : snapshot);
+          },
         }));
 
   return (
@@ -264,10 +276,14 @@ export default function MarketsScreen() {
           </Pressable>
           <Pressable
             onPress={() => setMenu("sort")}
-            style={styles.sortButton}
+            disabled={!snapshot}
+            style={[styles.sortButton, !snapshot && styles.disabledControl]}
             accessibilityRole="button"
             accessibilityLabel={`Sort markets: ${SORT_OPTIONS.find((option) => option.value === sort)?.label}`}
-            accessibilityState={{ expanded: menu === "sort" }}
+            accessibilityState={{
+              expanded: menu === "sort",
+              disabled: !snapshot,
+            }}
           >
             <SymbolView
               name={{
@@ -360,6 +376,16 @@ export default function MarketsScreen() {
               })}
             </Text>
           )}
+          {sort !== "name" && sortSnapshot ? (
+            <Text style={[styles.caption, styles.rankingTime]}>
+              Ranked{" "}
+              {new Date(sortSnapshot.receivedAt).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })}
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.status} accessibilityLiveRegion="polite">
@@ -639,6 +665,7 @@ const createStyles = (accountColors: ThemeColors) =>
       paddingBottom: 12,
     },
     caption: { fontSize: 12, color: accountColors.muted },
+    rankingTime: { width: "100%", textAlign: "right", fontSize: 11 },
     status: { paddingHorizontal: 20, paddingBottom: 12, gap: 5 },
     staleText: { fontSize: 12, color: accountColors.primary, lineHeight: 18 },
     disabledControl: { opacity: 0.45 },
@@ -689,7 +716,11 @@ const createStyles = (accountColors: ThemeColors) =>
       paddingHorizontal: 4,
       borderRadius: 12,
     },
-    periodLabel: { fontSize: 13, fontWeight: "600", color: accountColors.muted },
+    periodLabel: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: accountColors.muted,
+    },
     pressedControl: { opacity: 0.7 },
     assetColumn: { flex: 1, minWidth: 0 },
     priceColumn: { flex: 1, minWidth: 0, textAlign: "right" },

@@ -96,6 +96,8 @@ Signing out does not erase account-scoped market history. Another account uses s
 
 The catalog combines active spot symbols from Binance `/api/v3/exchangeInfo` with rolling summaries from `/api/v3/ticker/24hr`. Catalog metadata is cached in memory for five minutes.
 
+Selecting gainers or losers captures a ranking from the currently displayed snapshot. Prices keep updating, but their 24h changes do not reorder the rows until a sort option is selected again. The **Ranked** timestamp identifies that snapshot. Search, quote and watchlist filters retain the selected ranking; choosing A-Z clears it. Ranking is unavailable until the first snapshot loads.
+
 - Prices refresh every 60 seconds while the authenticated app is active, including from other main tabs.
 - Backgrounding pauses polling and cancels the current request. Foreground resume requests a fresh snapshot.
 - Requests have a 15-second deadline. Failed refreshes retain the last snapshot; data becomes stale after two minutes.
