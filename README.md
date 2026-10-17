@@ -13,7 +13,7 @@ The bottom tabs appear in this order: **Markets → Signals → Alerts → Profi
 | Markets | Search spot pairs, filter by quote currency, sort by name or 24h change, and manage the watchlist. |
 | Signals | View hourly SMA5/SMA10 crossovers for followed pairs and expand their explanations, averages and timestamps. |
 | Alerts | Inspect price-movement history, filter upward/downward events, pause monitoring and enable price notifications. |
-| Profile | Edit the display name and risk preference, review watchlist activity, change appearance, configure signal alerts and sign out. |
+| Profile | Edit the display name, review watchlist activity and pair count, open Markets to manage followed pairs, change appearance, configure signal alerts and sign out. |
 
 A new profile starts with an empty watchlist. Signals and the empty Markets watchlist suggest up to ten USDT pairs ranked by 24-hour quote volume. Following a suggestion requires a user action.
 
@@ -75,12 +75,14 @@ Guest screens offer registration and login. Authenticated navigation opens Profi
 
 Native sessions use an encrypted SecureStore adapter that splits larger values into small chunks. Web sessions use browser localStorage. Native token refresh follows the foreground lifecycle.
 
-Display name, risk preference and watchlist are stored in Supabase. The risk preference does not change the signal algorithm. Sign out clears this installation's session without signing out other devices or applications, and stays available if profile loading or saving fails. During profile refresh, previously loaded details remain visible with editing temporarily disabled.
+Display name and watchlist are stored in Supabase. Profile's name editor supports Save and Cancel: cancelling discards the draft, while a failed save keeps it available for retry. Watchlist changes are managed in Markets. The existing `risk_profile` value is retained for compatibility, without an editable selector, and does not change the signal algorithm.
+
+Sign out clears this installation's session without signing out other devices or applications, and stays available if profile loading or saving fails. During profile refresh, previously loaded details remain visible with editing temporarily disabled.
 
 | Data | Native storage | Browser storage |
 | --- | --- | --- |
 | Authentication session | SecureStore | localStorage |
-| Display name, risk preference and watchlist | Supabase | Supabase |
+| Display name, watchlist and legacy risk value | Supabase | Supabase |
 | Hourly readings and processed signal observations | SQLite key-value records per account | localStorage per account |
 | Price-alert history, cooldowns and notification preferences | SQLite key-value records per account | localStorage per account |
 | Watchlist activity | SQLite key-value record per account | localStorage per account |
@@ -152,7 +154,7 @@ pair range (%) = (high24h - low24h) / ((high24h + low24h) / 2) * 100
 watchlist range = median of the pair ranges
 ```
 
-Below 3% is **Low range**, 3% to below 10% is **Moderate range**, and 10% or more is **High range**. These descriptive categories are separate from the user's risk preference.
+Below 3% is **Low range**, 3% to below 10% is **Moderate range**, and 10% or more is **High range**. These descriptive categories do not change the legacy risk value, signal algorithm or alert settings.
 
 Every followed pair needs a valid range; missing data is not treated as zero. A matching result is reused for less than six hours. An expired result or changed watchlist is recalculated from the next eligible current snapshot.
 

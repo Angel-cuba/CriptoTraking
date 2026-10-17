@@ -5,7 +5,6 @@ import { useMarketCatalog } from "@/src/hooks/useMarketCatalog";
 import { useProfile } from "@/src/hooks/useProfile";
 import { useWatchlistActivity } from "@/src/hooks/useWatchlistActivity";
 import { getActivityLevel } from "@/src/services/watchlistActivityService";
-import { Link } from "expo-router";
 import { ActivityIndicator, Text, View } from "react-native";
 
 export function WatchlistActivity() {
@@ -110,16 +109,9 @@ export function WatchlistActivity() {
         </>
       ) : null}
       <Text style={styles.body}>
-        Price range is descriptive and refreshes every 6 hours. Your risk
-        preference stays separate.
+        Price range is descriptive. A calculation older than 6 hours is
+        refreshed when current prices are available.
       </Text>
-      <Link
-        href={{ pathname: "/markets", params: { scope: "watchlist" } }}
-        style={styles.link}
-      >
-        Manage watchlist
-        {profile ? ` · ${count} ${count === 1 ? "pair" : "pairs"}` : ""}
-      </Link>
     </View>
   );
 }

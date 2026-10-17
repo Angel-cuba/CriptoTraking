@@ -3,6 +3,7 @@ import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
 import type { ThemeColors } from "@/src/lib/theme";
 import type { User } from "@supabase/supabase-js";
 import { Link } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,24 +19,13 @@ import {
   useAccountStyles,
 } from "@/src/components/AccountScreen";
 import { ActionButton } from "@/src/components/ActionButton";
-import { AssetAvatar } from "@/src/components/AssetAvatar";
 import { FormField } from "@/src/components/FormField";
 import { NotificationSettings } from "@/src/components/NotificationSettings";
 import { WatchlistActivity } from "@/src/components/WatchlistActivity";
 import { useAuth } from "@/src/hooks/useAuth";
 import { useProfile } from "@/src/hooks/useProfile";
 import { supabaseClient } from "@/src/lib/supabase";
-import {
-  RISK_PROFILES,
-  type Profile,
-  type ProfileUpdate,
-} from "@/src/types/profile";
-
-const riskDescriptions = {
-  conservative: "A more cautious approach to market movement.",
-  balanced: "A balance between opportunity and risk.",
-  aggressive: "Comfortable with greater market volatility.",
-};
+import type { Profile, ProfileUpdate } from "@/src/types/profile";
 
 export default function ProfileScreen() {
   const { user } = useAuth();
@@ -46,15 +36,9 @@ function ProfileContent({ user }: { user: User }) {
   const { colors: accountColors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
   const accountStyles = useAccountStyles();
-  const {
-    profile,
-    loading,
-    saving,
-    error,
-    reloadProfile,
-    saveProfile,
-    toggleWatchlist,
-  } = useProfile();
+  const { profile, loading, saving, error, reloadProfile, saveProfile } =
+    useProfile();
+  const followedCount = new Set(profile?.watchlist ?? []).size;
   const [signingOut, setSigningOut] = useState(false);
   const logoutPending = useRef(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
@@ -110,8 +94,6 @@ function ProfileContent({ user }: { user: User }) {
             </Text>
           </View>
         </View>
-        <WatchlistActivity />
-        <AppearanceSettings />
         {profile ? (
           <>
             {loading ? (
@@ -126,13 +108,12 @@ function ProfileContent({ user }: { user: User }) {
                 </Text>
               </View>
             ) : null}
-            <ProfileEditor
+            <NameEditor
               profile={profile}
               saving={saving}
               disabled={loading || signingOut}
               error={error}
               saveProfile={saveProfile}
-              toggleWatchlist={toggleWatchlist}
             />
           </>
         ) : loading ? (
@@ -153,6 +134,27 @@ function ProfileContent({ user }: { user: User }) {
             />
           </View>
         )}
+        <WatchlistActivity />
+        <View style={[accountStyles.card, styles.watchlistSummary]}>
+          <View style={styles.detailText}>
+            <Text style={accountStyles.sectionTitle}>Watchlist</Text>
+            <Text style={accountStyles.body}>
+              {profile
+                ? `${followedCount} followed ${followedCount === 1 ? "pair" : "pairs"}`
+                : loading
+                  ? "Loading watchlist…"
+                  : "Watchlist unavailable."}
+            </Text>
+          </View>
+          <Link
+            href={{ pathname: "/markets", params: { scope: "watchlist" } }}
+            style={accountStyles.link}
+            disabled={signingOut}
+          >
+            Manage watchlist
+          </Link>
+        </View>
+        <AppearanceSettings />
         <NotificationSettings disabled={signingOut} />
         <View style={accountStyles.card}>
           <Text style={accountStyles.sectionTitle}>Session</Text>
@@ -173,135 +175,146 @@ function ProfileContent({ user }: { user: User }) {
   );
 }
 
-function ProfileEditor({
+function NameEditor({
   profile,
   saving,
   disabled,
   error,
   saveProfile,
-  toggleWatchlist,
 }: {
   profile: Profile;
   saving: boolean;
   disabled: boolean;
   error: string | null;
   saveProfile: (changes: ProfileUpdate) => Promise<boolean>;
-  toggleWatchlist: (symbol: string) => Promise<boolean>;
 }) {
+  const { colors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
   const accountStyles = useAccountStyles();
+  const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(profile.display_name);
+  const [submitting, setSubmitting] = useState(false);
+  const [editFocused, setEditFocused] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const unavailable = saving || disabled;
+  const savePending = useRef(false);
+  const unavailable = saving || disabled || submitting;
+  const name = displayName.trim();
+  const canSave =
+    editing &&
+    !unavailable &&
+    Boolean(name) &&
+    name !== profile.display_name.trim();
 
-  async function save(changes: ProfileUpdate, successMessage: string) {
+  function beginEdit() {
+    if (unavailable || savePending.current) return;
+    setDisplayName(profile.display_name);
     setMessage(null);
-    if (await saveProfile(changes)) setMessage(successMessage);
+    setEditError(null);
+    setEditFocused(false);
+    setEditing(true);
   }
 
-  const name = displayName.trim();
+  function cancelEdit() {
+    if (unavailable || savePending.current) return;
+    setDisplayName(profile.display_name);
+    setEditError(null);
+    setMessage(null);
+    setEditing(false);
+  }
+
+  async function saveName() {
+    if (!canSave || savePending.current) return;
+    savePending.current = true;
+    setSubmitting(true);
+    setMessage(null);
+    setEditError(null);
+    try {
+      if (await saveProfile({ display_name: name })) {
+        setEditing(false);
+        setMessage("Display name saved.");
+      }
+    } catch {
+      setEditError("Unable to save your display name. Please try again.");
+    } finally {
+      savePending.current = false;
+      setSubmitting(false);
+    }
+  }
+
   return (
-    <View style={accountStyles.gap}>
-      <View style={accountStyles.card}>
-        <Text style={accountStyles.sectionTitle}>Personal details</Text>
-        <FormField
-          label="Display name"
-          placeholder="How should we call you?"
-          value={displayName}
-          maxLength={60}
-          autoCapitalize="words"
-          editable={!unavailable}
-          onChangeText={(value) => {
-            setDisplayName(value);
-            setMessage(null);
-          }}
-        />
-        <ActionButton
-          title="Save display name"
-          loading={saving}
-          disabled={disabled || !name || name === profile.display_name}
-          onPress={() =>
-            void save({ display_name: name }, "Display name saved.")
-          }
-        />
-        <Feedback message={error} />
-        <Feedback message={message} success />
-      </View>
-      <View style={accountStyles.card}>
-        <Text style={accountStyles.sectionTitle}>Risk profile</Text>
-        <Text style={accountStyles.body}>
-          Choose the approach that best describes you.
-        </Text>
-        {RISK_PROFILES.map((risk) => (
-          <Pressable
-            key={risk}
-            accessibilityRole="radio"
-            accessibilityLabel={risk}
-            aria-checked={profile.risk_profile === risk}
-            accessibilityState={{
-              checked: profile.risk_profile === risk,
-              disabled: unavailable,
-            }}
-            disabled={unavailable}
-            style={[
-              styles.option,
-              profile.risk_profile === risk && styles.selected,
-            ]}
-            onPress={() => {
-              if (risk !== profile.risk_profile)
-                void save({ risk_profile: risk }, "Risk profile saved.");
-            }}
-          >
-            <View style={styles.optionText}>
-              <Text style={styles.optionTitle}>
-                {risk.charAt(0).toUpperCase() + risk.slice(1)}
-              </Text>
-              <Text style={accountStyles.body}>{riskDescriptions[risk]}</Text>
-            </View>
-            <Text style={styles.indicator}>
-              {profile.risk_profile === risk ? "●" : "○"}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      <View style={accountStyles.card}>
-        <Text style={accountStyles.sectionTitle}>My watchlist</Text>
-        <Text style={accountStyles.body}>
-          Follow any spot pair from Markets. Your saved pairs appear here.
-        </Text>
-        <Link
-          href={{ pathname: "/markets", params: { scope: "watchlist" } }}
-          style={accountStyles.link}
-        >
-          Manage watchlist in Markets
-        </Link>
-        {profile.watchlist.length === 0 ? (
-          <Text style={accountStyles.body}>Your watchlist is empty.</Text>
-        ) : null}
-        {profile.watchlist.map((asset) => (
-          <Pressable
-            key={asset}
-            accessibilityRole="button"
-            accessibilityLabel={`Remove ${asset} from watchlist`}
-            accessibilityState={{ disabled: unavailable }}
-            disabled={unavailable}
-            style={styles.option}
-            onPress={async () => {
+    <View style={accountStyles.card}>
+      <Text style={accountStyles.sectionTitle}>Personal details</Text>
+      {editing ? (
+        <>
+          <FormField
+            label="Display name"
+            placeholder="How should we call you?"
+            value={displayName}
+            maxLength={60}
+            autoCapitalize="words"
+            autoCorrect={false}
+            editable={!unavailable}
+            returnKeyType="done"
+            onSubmitEditing={() => void saveName()}
+            onChangeText={(value) => {
+              setDisplayName(value);
+              setEditError(null);
               setMessage(null);
-              if (await toggleWatchlist(asset)) setMessage("Watchlist saved.");
             }}
-          >
-            <AssetAvatar symbol={asset.replace(/USDT$/, "")} size={32} />
-            <Text
-              style={[styles.optionTitle, styles.watchlistSymbol]}
-              numberOfLines={1}
-            >
-              {asset}
+          />
+          <View style={styles.editorActions}>
+            <View style={styles.cancelAction}>
+              <ActionButton
+                title="Cancel"
+                secondary
+                disabled={unavailable}
+                onPress={cancelEdit}
+              />
+            </View>
+            <View style={styles.saveAction}>
+              <ActionButton
+                title="Save display name"
+                loading={saving || submitting}
+                disabled={!canSave}
+                onPress={() => void saveName()}
+              />
+            </View>
+          </View>
+        </>
+      ) : (
+        <View style={styles.detailRow}>
+          <View style={styles.detailText}>
+            <Text style={accountStyles.body}>Display name</Text>
+            <Text style={styles.detailValue}>
+              {profile.display_name.trim() || "Not set"}
             </Text>
-            <Text style={styles.removeLabel}>Remove</Text>
+          </View>
+          <Pressable
+            onPress={beginEdit}
+            onFocus={() => setEditFocused(true)}
+            onBlur={() => setEditFocused(false)}
+            disabled={unavailable}
+            accessibilityRole="button"
+            accessibilityLabel="Edit display name"
+            accessibilityState={{ disabled: unavailable }}
+            style={({ pressed }) => [
+              styles.editButton,
+              unavailable && styles.disabledControl,
+              pressed && !unavailable && styles.pressedControl,
+              editFocused && !unavailable && styles.focusedControl,
+            ]}
+          >
+            <SymbolView
+              name={{ ios: "pencil", android: "edit", web: "edit" }}
+              tintColor={colors.primary}
+              size={20}
+            />
           </Pressable>
-        ))}
-      </View>
+        </View>
+      )}
+      <Feedback message={editError || error} />
+      <Feedback message={message} success />
     </View>
   );
 }
@@ -344,29 +357,39 @@ const createStyles = (accountColors: ThemeColors) =>
       fontWeight: "600",
       marginTop: 3,
     },
-    option: {
-      minHeight: 52,
+    detailRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
       gap: 12,
-      padding: 14,
+    },
+    detailText: { flex: 1, minWidth: 0, gap: 6 },
+    detailValue: { color: accountColors.text, fontSize: 15, lineHeight: 22 },
+    editButton: {
+      width: 44,
+      height: 44,
+      alignItems: "center",
+      justifyContent: "center",
       borderWidth: 1,
       borderColor: accountColors.border,
-      borderRadius: 16,
-      backgroundColor: accountColors.background,
-    },
-    selected: {
-      borderColor: accountColors.primary,
+      borderRadius: 14,
       backgroundColor: accountColors.primarySoft,
     },
-    optionText: { flex: 1, gap: 4 },
-    optionTitle: { color: accountColors.text, fontSize: 15, fontWeight: "600" },
-    indicator: { color: accountColors.primary, fontSize: 21 },
-    watchlistSymbol: { flex: 1 },
-    removeLabel: {
-      color: accountColors.accent,
-      fontSize: 14,
-      fontWeight: "600",
+    disabledControl: { opacity: 0.45 },
+    pressedControl: { opacity: 0.7 },
+    focusedControl: {
+      outlineStyle: "solid",
+      outlineWidth: 2,
+      outlineColor: accountColors.accent,
+      outlineOffset: 3,
+    },
+    editorActions: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+    cancelAction: { flex: 1, minWidth: 96 },
+    saveAction: { flex: 2, minWidth: 168 },
+    watchlistSummary: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      columnGap: 12,
+      rowGap: 6,
     },
   });
