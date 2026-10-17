@@ -8,6 +8,7 @@ import type { MarketAsset, MarketMovement } from "@/src/types/market";
 import { AssetAvatar } from "./AssetAvatar";
 
 export const MARKET_ROW_HEIGHT = 110;
+export type MarketChangeView = "24h" | "update" | "both";
 
 function formatPrice(price: number): string {
   if (price < 0.000001) return price.toExponential(2);
@@ -17,20 +18,68 @@ function formatPrice(price: number): string {
   });
 }
 
-function formatMovement(change: number): string {
-  if (change === 0) return "= 0.00%";
-  if (Math.abs(change) < 0.01) return `${change > 0 ? "↑" : "↓"} <0.01%`;
-  return `${change > 0 ? "↑ +" : "↓ -"}${Math.abs(change).toFixed(2)}%`;
+function ChangeValue({
+  symbol,
+  value,
+  digits = 2,
+  empty = "N/A",
+  period,
+  label,
+}: {
+  symbol: string;
+  value: number | undefined;
+  digits?: number;
+  empty?: string;
+  period?: string;
+  label: string;
+}) {
+  const { colors } = useAppTheme();
+  const styles = useThemeStyles(createStyles);
+  const neutral = value === undefined || value === 0;
+  const color = neutral
+    ? colors.muted
+    : value > 0
+      ? colors.success
+      : colors.danger;
+  const backgroundColor = neutral
+    ? colors.elevated
+    : value > 0
+      ? colors.successSoft
+      : colors.dangerSoft;
+  const magnitude = Math.abs(value ?? 0);
+  const amount =
+    magnitude > 0 && magnitude < 10 ** -digits
+      ? magnitude.toExponential(1)
+      : magnitude.toFixed(digits);
+  const sign = neutral ? "" : value > 0 ? "+" : "-";
+  return (
+    <View style={styles.changeBlock}>
+      {period ? <Text style={styles.period}>{period}</Text> : null}
+      <View style={[styles.changeBadge, { backgroundColor }]}>
+        <Text
+          style={[styles.change, { color }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+          accessibilityLabel={`${symbol}: ${value === undefined ? empty : `${sign}${amount} percent`} ${label}`}
+        >
+          {value === undefined ? empty : `${sign}${amount}%`}
+        </Text>
+      </View>
+    </View>
+  );
 }
 
 export const MarketRow = memo(function MarketRow({
   asset,
+  changeView = "24h",
   movement,
   watched,
   watchlistDisabled,
   onToggleWatchlist,
 }: {
   asset: MarketAsset;
+  changeView?: MarketChangeView;
   movement?: MarketMovement;
   watched: boolean;
   watchlistDisabled: boolean;
@@ -39,13 +88,10 @@ export const MarketRow = memo(function MarketRow({
   const { colors: accountColors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
   const { ticker } = asset;
-  const change = ticker?.changePercent24h;
-  const changeColor =
-    change === undefined || change === 0
-      ? accountColors.muted
-      : change > 0
-        ? accountColors.success
-        : accountColors.danger;
+  const elapsed = movement
+    ? (movement.receivedAt - movement.previousReceivedAt) / 1000
+    : 0;
+  const interval = elapsed < 1 ? "<1s" : `${Math.round(elapsed)}s`;
 
   return (
     <View style={styles.slot}>
@@ -66,27 +112,16 @@ export const MarketRow = memo(function MarketRow({
           <Text style={styles.quote} numberOfLines={1}>
             {asset.baseAsset}/{asset.quoteAsset}
           </Text>
-          <Text
-            style={[
-              styles.movement,
-              {
-                color:
-                  !movement || movement.changePercent === 0
-                    ? accountColors.muted
-                    : movement.changePercent > 0
-                      ? accountColors.success
-                      : accountColors.danger,
-              },
-            ]}
-            accessibilityLabel={
-              movement
-                ? `${asset.symbol}: ${movement.changePercent > 0 ? "up" : movement.changePercent < 0 ? "down" : "unchanged"}, ${Math.abs(movement.changePercent) > 0 && Math.abs(movement.changePercent) < 0.01 ? "less than 0.01" : Math.abs(movement.changePercent).toFixed(2)} percent since the previous update.`
-                : `${asset.symbol}: no recent price comparison available.`
-            }
-            numberOfLines={1}
-          >
-            {movement ? formatMovement(movement.changePercent) : "—"}
-          </Text>
+          {changeView === "both" ? (
+            <ChangeValue
+              symbol={asset.symbol}
+              value={movement?.changePercent}
+              digits={4}
+              empty={ticker ? "Waiting" : "N/A"}
+              period={`Update${movement ? ` ${interval}` : ""}`}
+              label={`since the previous update${movement ? ` (${interval})` : ""}`}
+            />
+          ) : null}
         </View>
         <View style={styles.price}>
           <Text
@@ -98,28 +133,23 @@ export const MarketRow = memo(function MarketRow({
             {ticker ? formatPrice(ticker.price) : "Unavailable"}
           </Text>
           <Text style={styles.quote}>{asset.quoteAsset}</Text>
-          <View
-            style={[
-              styles.changeBadge,
-              {
-                backgroundColor:
-                  change === undefined || change === 0
-                    ? accountColors.elevated
-                    : change > 0
-                      ? accountColors.successSoft
-                      : accountColors.dangerSoft,
-              },
-            ]}
-          >
-            <Text
-              style={[styles.change, { color: changeColor }]}
-              accessibilityLabel={`${asset.symbol}: ${change === undefined ? "unavailable" : `${change.toFixed(2)} percent`} over 24 hours`}
-            >
-              {change === undefined
-                ? "N/A"
-                : `${change > 0 ? "+" : ""}${change.toFixed(2)}%`}
-            </Text>
-          </View>
+          {changeView === "update" ? (
+            <ChangeValue
+              symbol={asset.symbol}
+              value={movement?.changePercent}
+              digits={4}
+              empty={ticker ? "Waiting" : "N/A"}
+              period={movement ? interval : undefined}
+              label={`since the previous update${movement ? ` (${interval})` : ""}`}
+            />
+          ) : (
+            <ChangeValue
+              symbol={asset.symbol}
+              value={ticker?.changePercent24h}
+              period={changeView === "both" ? "24h" : undefined}
+              label="over 24 hours"
+            />
+          )}
         </View>
         <Pressable
           style={[
@@ -186,11 +216,13 @@ const createStyles = (accountColors: ThemeColors) =>
       color: accountColors.text,
       fontVariant: ["tabular-nums"],
     },
-    movement: {
-      fontSize: 11,
-      fontWeight: "600",
-      fontVariant: ["tabular-nums"],
+    changeBlock: { maxWidth: "100%", alignItems: "flex-end", gap: 2 },
+    period: { fontSize: 10, lineHeight: 12, color: accountColors.muted },
+    changeBadge: {
+      maxWidth: "100%",
+      borderRadius: 8,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
     },
-    changeBadge: { borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3 },
     change: { fontSize: 11, fontWeight: "600", fontVariant: ["tabular-nums"] },
   });

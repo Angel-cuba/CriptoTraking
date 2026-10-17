@@ -18,7 +18,11 @@ import {
 } from "react-native-safe-area-context";
 
 import { MarketOptionsModal } from "@/src/components/MarketOptionsModal";
-import { MARKET_ROW_HEIGHT, MarketRow } from "@/src/components/MarketRow";
+import {
+  MARKET_ROW_HEIGHT,
+  MarketRow,
+  type MarketChangeView,
+} from "@/src/components/MarketRow";
 import { MarketSuggestions } from "@/src/components/MarketSuggestions";
 import { useMarketCatalog } from "@/src/hooks/useMarketCatalog";
 import { useProfile } from "@/src/hooks/useProfile";
@@ -31,6 +35,12 @@ const SORT_OPTIONS = [
 ] as const;
 
 type Sort = (typeof SORT_OPTIONS)[number]["value"];
+
+const CHANGE_VIEWS: { value: MarketChangeView; label: string }[] = [
+  { value: "24h", label: "24h" },
+  { value: "update", label: "Last update" },
+  { value: "both", label: "Both" },
+];
 
 export default function MarketsScreen() {
   const { scope } = useLocalSearchParams<{ scope?: string }>();
@@ -59,6 +69,7 @@ export default function MarketsScreen() {
   const pendingFollow = useRef(false);
   const list = useRef<FlatList<MarketAsset>>(null);
   const [pullRefreshing, setPullRefreshing] = useState(false);
+  const [changeView, setChangeView] = useState<MarketChangeView>("24h");
   const watchlistDisabled =
     profileLoading || saving || !profile || pendingSymbol !== null;
   const watched = useMemo(
@@ -81,11 +92,12 @@ export default function MarketsScreen() {
   );
   const rowState = useMemo(
     () => ({
+      changeView,
       movements: stale || paused ? null : movements,
       watched,
       watchlistDisabled,
     }),
-    [movements, stale, paused, watched, watchlistDisabled],
+    [changeView, movements, stale, paused, watched, watchlistDisabled],
   );
   const refreshUnavailable = loading || paused || retryAt !== null;
   const [search, setSearch] = useState("");
@@ -302,6 +314,37 @@ export default function MarketsScreen() {
           ))}
         </View>
 
+        <View
+          style={styles.periodSelector}
+          accessibilityRole="radiogroup"
+          accessibilityLabel="Change period"
+        >
+          {CHANGE_VIEWS.map((view) => (
+            <Pressable
+              key={view.value}
+              onPress={() => setChangeView(view.value)}
+              accessibilityRole="radio"
+              accessibilityLabel={`Change period: ${view.label}`}
+              accessibilityState={{ checked: changeView === view.value }}
+              aria-checked={changeView === view.value}
+              style={({ pressed }) => [
+                styles.periodOption,
+                changeView === view.value && styles.selectedFilter,
+                pressed && styles.pressedControl,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.periodLabel,
+                  changeView === view.value && styles.selectedFilterLabel,
+                ]}
+              >
+                {view.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
         <View style={styles.summary}>
           <Text style={styles.caption}>
             {snapshot
@@ -339,10 +382,13 @@ export default function MarketsScreen() {
               Prices may be outdated. Last received data is shown.
             </Text>
           ) : null}
-          <Text style={styles.caption}>
-            Price arrows compare updates up to 2 minutes apart. A dash means no
-            recent comparison.
-          </Text>
+          {changeView !== "24h" ? (
+            <Text style={styles.caption}>
+              Last update compares prices up to 2 minutes apart. Waiting means
+              no recent comparison is available, including after returning to
+              the app.
+            </Text>
+          ) : null}
         </View>
 
         {profileError ? (
@@ -381,7 +427,14 @@ export default function MarketsScreen() {
 
         <View style={styles.columns}>
           <Text style={[styles.caption, styles.assetColumn]}>Asset</Text>
-          <Text style={[styles.caption, styles.priceColumn]}>Price / 24h</Text>
+          <Text style={[styles.caption, styles.priceColumn]}>
+            Price /{" "}
+            {changeView === "24h"
+              ? "24h"
+              : changeView === "update"
+                ? "Since update"
+                : "Change"}
+          </Text>
         </View>
 
         <FlatList
@@ -393,6 +446,7 @@ export default function MarketsScreen() {
           renderItem={({ item }) => (
             <MarketRow
               asset={item}
+              changeView={changeView}
               movement={
                 stale || paused ? undefined : movements.get(item.symbol)
               }
@@ -618,6 +672,25 @@ const createStyles = (accountColors: ThemeColors) =>
       backgroundColor: accountColors.primarySoft,
     },
     selectedFilterLabel: { color: accountColors.primary },
+    periodSelector: {
+      flexDirection: "row",
+      gap: 6,
+      marginHorizontal: 20,
+      marginTop: 12,
+      padding: 4,
+      borderRadius: 16,
+      backgroundColor: accountColors.elevated,
+    },
+    periodOption: {
+      flex: 1,
+      minHeight: 44,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 4,
+      borderRadius: 12,
+    },
+    periodLabel: { fontSize: 13, fontWeight: "600", color: accountColors.muted },
+    pressedControl: { opacity: 0.7 },
     assetColumn: { flex: 1, minWidth: 0 },
     priceColumn: { flex: 1, minWidth: 0, textAlign: "right" },
     error: {

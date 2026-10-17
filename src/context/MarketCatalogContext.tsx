@@ -205,6 +205,8 @@ export function MarketCatalogProvider({
         pollTimer = setInterval(loadMarkets, REFRESH_INTERVAL_MS);
       } else {
         cancelRequest();
+        observations = new Map();
+        setState((previous) => ({ ...previous, movements: new Map() }));
         onPause?.();
       }
     }

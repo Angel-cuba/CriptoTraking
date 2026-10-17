@@ -100,7 +100,9 @@ The catalog combines active spot symbols from Binance `/api/v3/exchangeInfo` wit
 - HTTP 429/418 responses establish a provider retry window.
 - Manual refresh and pull-to-refresh are available. Automatic updates do not activate the pull-to-refresh indicator.
 
-The 24h percentage comes from Binance's rolling summary. Price arrows compare consecutive accepted updates no more than two minutes apart. Neither is the reference used for price alerts.
+Markets offers **24h**, **Last update** and **Both** change views. The initial selection is 24h. Its percentage comes from Binance's rolling summary. Last update compares consecutive accepted prices no more than two minutes apart and shows the comparison interval. The first observation, including after foreground resume, establishes a new reference and displays **Waiting**. Neither percentage is the reference used for price alerts.
+
+Last-update percentages use four decimal places; 24h percentages use two. Smaller nonzero changes use scientific notation rather than rounding to zero.
 
 Price monitoring evaluates followed pairs independently of hourly signals:
 
