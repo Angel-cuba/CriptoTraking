@@ -179,6 +179,19 @@ export default function MarketsScreen() {
           },
         }));
 
+  let emptyTitle = "No markets found";
+  if (error) emptyTitle = "Markets unavailable";
+  else if (watchlistOnly && !profile) emptyTitle = "Watchlist unavailable";
+  else if (watchlistOnly) {
+    if (watched.size === 0) emptyTitle = "Your watchlist is empty";
+    else
+      emptyTitle =
+        search || quote !== "ALL"
+          ? "No followed pairs match these filters"
+          : "Followed pairs unavailable";
+  }
+  const returnToAllMarkets = watched.size === 0 || (!search && quote === "ALL");
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <View style={styles.content}>
@@ -516,7 +529,7 @@ export default function MarketsScreen() {
                   accessibilityRole="button"
                   style={styles.retry}
                 >
-                  <Text style={styles.retryLabel}>Browse all markets</Text>
+                  <Text style={styles.retryLabel}>All markets</Text>
                 </Pressable>
               </View>
             ) : (
@@ -537,15 +550,7 @@ export default function MarketsScreen() {
                       tintColor={accountColors.muted}
                       size={30}
                     />
-                    <Text style={styles.emptyTitle}>
-                      {error
-                        ? "Markets unavailable"
-                        : watchlistOnly && !profile
-                          ? "Watchlist unavailable"
-                          : watchlistOnly && watched.size === 0
-                            ? "Your watchlist is empty"
-                            : "No markets found"}
-                    </Text>
+                    <Text style={styles.emptyTitle}>{emptyTitle}</Text>
                     {watchlistOnly && profile && watched.size === 0 ? (
                       <Text style={styles.caption}>
                         Add pairs using the stars in All markets.
@@ -560,6 +565,26 @@ export default function MarketsScreen() {
                         <Text style={styles.retryLabel}>Clear search</Text>
                       </Pressable>
                     )}
+                    {watchlistOnly ? (
+                      <Pressable
+                        onPress={() => {
+                          if (returnToAllMarkets) setWatchlistOnly(false);
+                          else {
+                            setSearch("");
+                            setQuote("ALL");
+                          }
+                        }}
+                        style={({ pressed }) => [
+                          styles.retry,
+                          pressed && styles.pressedControl,
+                        ]}
+                        accessibilityRole="button"
+                      >
+                        <Text style={styles.retryLabel}>
+                          {returnToAllMarkets ? "All markets" : "Clear filters"}
+                        </Text>
+                      </Pressable>
+                    ) : null}
                   </>
                 )}
               </View>

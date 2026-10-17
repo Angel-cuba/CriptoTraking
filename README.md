@@ -98,6 +98,8 @@ The catalog combines active spot symbols from Binance `/api/v3/exchangeInfo` wit
 
 Selecting gainers or losers captures a ranking from the currently displayed snapshot. Prices keep updating, but their 24h changes do not reorder the rows until a sort option is selected again. The **Ranked** timestamp identifies that snapshot. Search, quote and watchlist filters retain the selected ranking; choosing A-Z clears it. Ranking is unavailable until the first snapshot loads.
 
+Empty watchlist views distinguish no followed pairs, filters with no matches and followed pairs unavailable in the current catalog. **Clear filters** resets search and quote currency to all pairs while retaining the watchlist view and ranking. **All markets** returns to the market browser when the watchlist is empty or its pairs remain unavailable without filters. These actions do not change saved watchlist entries.
+
 - Prices refresh every 60 seconds while the authenticated app is active, including from other main tabs.
 - Backgrounding pauses polling and cancels the current request. Foreground resume requests a fresh snapshot.
 - Requests have a 15-second deadline. Failed refreshes retain the last snapshot; data becomes stale after two minutes.
