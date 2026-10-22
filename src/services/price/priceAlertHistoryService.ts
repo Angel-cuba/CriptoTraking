@@ -3,7 +3,7 @@ import {
   MAX_PRICE_OBSERVATION_AGE_MS,
   evaluatePriceAlert,
   resetPriceAlertBaseline,
-} from "@/src/services/priceAlertService";
+} from "@/src/services/price/priceAlertService";
 import type {
   MarketPriceObservation,
   MarketSnapshot,

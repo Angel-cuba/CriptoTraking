@@ -1,4 +1,4 @@
-import { parsePriceAlertHistory } from "@/src/services/priceAlertHistoryService";
+import { parsePriceAlertHistory } from "@/src/services/price/priceAlertHistoryService";
 import type { PriceAlertHistory } from "@/src/types/priceAlert";
 
 const pending = new Map<string, Promise<unknown>>();

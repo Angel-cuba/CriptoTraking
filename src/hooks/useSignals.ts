@@ -1,5 +1,5 @@
-import { getSignals, type AssetSignal } from "@/src/services/signalService";
-import { getSavedSignals, saveSignals } from "@/src/services/signalStorage";
+import { getSignals, type AssetSignal } from "@/src/services/signal/signalService";
+import { getSavedSignals, saveSignals } from "@/src/services/signal/signalStorage";
 import {
   useCallback,
   useEffect,

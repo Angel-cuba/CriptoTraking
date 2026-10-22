@@ -1,12 +1,12 @@
 import {
   hasNotificationPermission,
   sendSignalNotification,
-} from "@/src/services/localNotificationService";
+} from "@/src/services/local/localNotificationService";
 import {
   withNotificationState,
   type NotificationState,
-} from "@/src/services/signalNotificationStorage";
-import type { AssetSignal } from "@/src/services/signalService";
+} from "@/src/services/signal/signalNotificationStorage";
+import type { AssetSignal } from "@/src/services/signal/signalService";
 
 export function getNewSignals(
   signals: AssetSignal[],

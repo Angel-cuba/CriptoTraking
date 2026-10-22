@@ -1,7 +1,7 @@
 import { AssetAvatar } from "@/src/components/AssetAvatar";
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
 import type { ThemeColors } from "@/src/lib/theme";
-import type { AssetSignal } from "@/src/services/signalService";
+import type { AssetSignal } from "@/src/services/signal/signalService";
 import type { MarketSymbol } from "@/src/types/market";
 import { SymbolView } from "expo-symbols";
 import {

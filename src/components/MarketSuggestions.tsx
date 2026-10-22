@@ -1,6 +1,6 @@
 import { useAccountStyles } from "@/src/components/AccountScreen";
 import { MarketRow } from "@/src/components/MarketRow";
-import { getMarketSuggestions } from "@/src/services/marketSuggestionService";
+import { getMarketSuggestions } from "@/src/services/market/marketSuggestionService";
 import type { MarketAsset } from "@/src/types/market";
 import { useMemo } from "react";
 import { Text, View } from "react-native";

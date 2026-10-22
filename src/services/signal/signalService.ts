@@ -2,7 +2,7 @@ import { calculateSignal, type SignalResult } from "@/src/api/signalApi";
 import {
   BinanceRateLimitError,
   getBinanceData,
-} from "@/src/services/marketService";
+} from "@/src/services/market/marketService";
 
 export type AssetSignal = SignalResult & { symbol: string; checkedAt?: number };
 export type SignalBatch = {

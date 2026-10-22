@@ -6,13 +6,13 @@ import {
   hasNotificationPermission,
   notificationsSupported,
   requestNotificationPermission,
-} from "@/src/services/localNotificationService";
-import { processSignalNotifications } from "@/src/services/signalNotificationService";
+} from "@/src/services/local/localNotificationService";
+import { processSignalNotifications } from "@/src/services/signal/signalNotificationService";
 import {
   getNotificationState,
   setNotificationsEnabled,
-} from "@/src/services/signalNotificationStorage";
-import type { AssetSignal } from "@/src/services/signalService";
+} from "@/src/services/signal/signalNotificationStorage";
+import type { AssetSignal } from "@/src/services/signal/signalService";
 import {
   createContext,
   useCallback,

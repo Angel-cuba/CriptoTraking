@@ -7,22 +7,22 @@ import {
   notificationsSupported,
   requestNotificationPermission,
   type NotificationPermission,
-} from "@/src/services/localNotificationService";
+} from "@/src/services/local/localNotificationService";
 import {
   applyPriceAlertSnapshot,
   resetPriceAlertHistory,
   restorePriceAlertHistory,
   updatePriceAlertDelivery,
-} from "@/src/services/priceAlertHistoryService";
+} from "@/src/services/price/priceAlertHistoryService";
 import {
   clearPriceAlertNotifications,
   sendPriceAlertNotification,
-} from "@/src/services/priceAlertNotificationService";
-import { MAX_PRICE_OBSERVATION_AGE_MS } from "@/src/services/priceAlertService";
+} from "@/src/services/price/priceAlertNotificationService";
+import { MAX_PRICE_OBSERVATION_AGE_MS } from "@/src/services/price/priceAlertService";
 import {
   loadPriceAlertHistory,
   savePriceAlertHistory,
-} from "@/src/services/priceAlertStorage";
+} from "@/src/services/price/priceAlertStorage";
 import type { MarketSnapshot } from "@/src/types/market";
 import type {
   PriceAlertEvent,

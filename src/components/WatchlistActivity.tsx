@@ -4,7 +4,7 @@ import { useAppTheme } from "@/src/context/ThemeContext";
 import { useMarketCatalog } from "@/src/hooks/useMarketCatalog";
 import { useProfile } from "@/src/hooks/useProfile";
 import { useWatchlistActivity } from "@/src/hooks/useWatchlistActivity";
-import { getActivityLevel } from "@/src/services/watchlistActivityService";
+import { getActivityLevel } from "@/src/services/watchlist/watchlistActivityService";
 import { ActivityIndicator, Text, View } from "react-native";
 
 export function WatchlistActivity() {

@@ -1,7 +1,7 @@
 import {
   parseWatchlistActivity,
   type WatchlistActivity,
-} from "@/src/services/watchlistActivityService";
+} from "@/src/services/watchlist/watchlistActivityService";
 import Storage from "expo-sqlite/kv-store";
 
 const pending = new Map<string, Promise<void>>();

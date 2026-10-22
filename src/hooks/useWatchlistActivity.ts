@@ -7,11 +7,11 @@ import {
   getWatchlistRanges,
   watchlistKey,
   type WatchlistActivity,
-} from "@/src/services/watchlistActivityService";
+} from "@/src/services/watchlist/watchlistActivityService";
 import {
   loadWatchlistActivity,
   saveWatchlistActivity,
-} from "@/src/services/watchlistActivityStorage";
+} from "@/src/services/watchlist/watchlistActivityStorage";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export function useWatchlistActivity() {

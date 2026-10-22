@@ -3,7 +3,7 @@ import {
   getNotificationPermission,
   notificationsSupported,
   prepareNotificationChannel,
-} from "@/src/services/localNotificationService";
+} from "@/src/services/local/localNotificationService";
 import type { MarketSymbol } from "@/src/types/market";
 import type {
   PriceAlertEvent,

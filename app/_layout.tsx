@@ -19,7 +19,7 @@ import {
 import { ActionButton } from "@/src/components/ActionButton";
 import { AuthProvider } from "@/src/context/AuthContext";
 import { useAuth } from "@/src/hooks/useAuth";
-import { listenForPriceAlertNotificationTap } from "@/src/services/priceAlertNotificationService";
+import { listenForPriceAlertNotificationTap } from "@/src/services/price/priceAlertNotificationService";
 
 export { ErrorBoundary } from "expo-router";
 export const unstable_settings = { initialRouteName: "index" };

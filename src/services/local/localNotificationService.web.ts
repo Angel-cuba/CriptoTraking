@@ -1,4 +1,4 @@
-import type { AssetSignal } from "@/src/services/signalService";
+import type { AssetSignal } from "@/src/services/signal/signalService";
 export type NotificationPermission =
   | "granted"
   | "provisional"

@@ -12,8 +12,8 @@ import { AppState, type AppStateStatus } from "react-native";
 import {
   getMarketSnapshot,
   MarketRateLimitError,
-} from "@/src/services/marketCatalogService";
-import { compareMarketPrices } from "@/src/services/marketMovementService";
+} from "@/src/services/market/marketCatalogService";
+import { compareMarketPrices } from "@/src/services/market/marketMovementService";
 import type {
   MarketMovement,
   MarketPriceObservation,

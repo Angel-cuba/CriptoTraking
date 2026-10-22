@@ -1,4 +1,4 @@
-import type { AssetSignal } from "@/src/services/signalService";
+import type { AssetSignal } from "@/src/services/signal/signalService";
 import * as Notifications from "expo-notifications";
 import { AppState, Platform } from "react-native";
 

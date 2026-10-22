@@ -1,7 +1,7 @@
 import {
   parseWatchlistActivity,
   type WatchlistActivity,
-} from "@/src/services/watchlistActivityService";
+} from "@/src/services/watchlist/watchlistActivityService";
 
 const storageKey = (userId: string) => `kripto.watchlist-activity.v1.${userId}`;
 export async function loadWatchlistActivity(

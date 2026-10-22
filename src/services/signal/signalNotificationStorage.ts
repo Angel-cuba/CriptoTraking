@@ -2,7 +2,7 @@ import {
   readLegacySignalData,
   readSignalData,
   writeSignalData,
-} from "@/src/services/signalStorageBackend";
+} from "@/src/services/signal/signalStorageBackend";
 
 export type NotificationState = {
   version: 2;

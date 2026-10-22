@@ -1,4 +1,4 @@
-import type { MarketCandle } from "@/src/services/marketService";
+import type { MarketCandle } from "@/src/services/market/marketService";
 
 export type SignalType = "BUY" | "SELL" | "NEUTRAL";
 export type SignalResult = {

@@ -1,9 +1,9 @@
-import type { AssetSignal } from "@/src/services/signalService";
+import type { AssetSignal } from "@/src/services/signal/signalService";
 import {
   readLegacySignalData,
   readSignalData,
   writeSignalData,
-} from "@/src/services/signalStorageBackend";
+} from "@/src/services/signal/signalStorageBackend";
 
 export type SavedSignals = {
   version: 2;
