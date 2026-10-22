@@ -4,12 +4,12 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import type { FlatList } from "react-native";
 
 const SORT_OPTIONS = [
-  { value: "name", label: "Asset A-Z" },
-  { value: "gainers", label: "24h change: highest first" },
-  { value: "losers", label: "24h change: lowest first" },
+  { value: "name", label: "Asset A-Z", shortLabel: "A-Z" },
+  { value: "gainers", label: "24h change: highest first", shortLabel: "Gainers" },
+  { value: "losers", label: "24h change: lowest first", shortLabel: "Losers" },
 ] as const;
 
-type Sort = (typeof SORT_OPTIONS)[number]["value"];
+type SortOption = (typeof SORT_OPTIONS)[number];
 
 const CHANGE_VIEWS: { value: MarketChangeView; label: string }[] = [
   { value: "24h", label: "24h" },
@@ -29,9 +29,11 @@ export function useMarketList({
   const list = useRef<FlatList<MarketAsset>>(null);
   const scrollOffset = useRef(0);
   const positionFilters = useRef("");
+  const positionRowHeight = useRef<number | null>(null);
   const [search, setSearch] = useState("");
   const [quote, setQuote] = useState(watchlistOnly ? "ALL" : "USDT");
-  const [sort, updateSort] = useState<Sort>("name");
+  const [sortOption, updateSort] = useState<SortOption>(SORT_OPTIONS[0]);
+  const sort = sortOption.value;
   const [sortSnapshot, setSortSnapshot] = useState<MarketSnapshot | null>(null);
   const [changeView, setChangeView] = useState<MarketChangeView>("24h");
   const [menu, setMenu] = useState<"quote" | "sort" | "change" | null>(null);
@@ -45,24 +47,31 @@ export function useMarketList({
     sort,
     sortSnapshot?.receivedAt,
   ]);
-  const restorePosition = useCallback(() => {
-    if (positionFilters.current !== filterKey) {
-      scrollOffset.current = 0;
-      positionFilters.current = filterKey;
-    }
-    list.current?.scrollToOffset({
-      offset: scrollOffset.current,
-      animated: false,
-    });
-  }, [filterKey]);
+  const restorePosition = useCallback(
+    (rowHeight?: number) => {
+      if (positionFilters.current !== filterKey) {
+        scrollOffset.current = 0;
+        positionFilters.current = filterKey;
+      } else if (rowHeight !== undefined && positionRowHeight.current !== null) {
+        // Keep the same pair visible when the period or text size changes row height.
+        scrollOffset.current *= rowHeight / positionRowHeight.current;
+      }
+      if (rowHeight !== undefined) positionRowHeight.current = rowHeight;
+      list.current?.scrollToOffset({
+        offset: scrollOffset.current,
+        animated: false,
+      });
+    },
+    [filterKey],
+  );
   const resetPosition = useCallback(() => {
     scrollOffset.current = 0;
     list.current?.scrollToOffset({ offset: 0, animated: false });
   }, []);
   const setSort = useCallback(
-    (value: Sort) => {
-      updateSort(value);
-      setSortSnapshot(value === "name" ? null : snapshot);
+    (option: SortOption) => {
+      updateSort(option);
+      setSortSnapshot(option.value === "name" ? null : snapshot);
     },
     [snapshot],
   );
@@ -113,9 +122,7 @@ export function useMarketList({
       ? ["ALL", ...quotes].map((currency) => ({
           label: currency === "ALL" ? "All pairs" : currency,
           selected: quote === currency,
-          onSelect: () => {
-            setQuote(currency);
-          },
+          onSelect: () => setQuote(currency),
         }))
       : menu === "change"
         ? CHANGE_VIEWS.map((view) => ({
@@ -126,7 +133,7 @@ export function useMarketList({
         : SORT_OPTIONS.map((option) => ({
             label: option.label,
             selected: sort === option.value,
-            onSelect: () => setSort(option.value),
+            onSelect: () => setSort(option),
           }));
 
   return {
@@ -137,15 +144,17 @@ export function useMarketList({
     search,
     setSearch,
     quote,
-    sort,
-    sortSnapshot,
+    sorting: {
+      label: sortOption.shortLabel,
+      description: sortOption.label,
+      rankedAt: sortSnapshot?.receivedAt ?? null,
+    },
     changeView,
     menu,
     setMenu,
     markets,
     options,
     resetFilters,
-    sortLabel: SORT_OPTIONS.find((option) => option.value === sort)?.label,
     changeLabel: CHANGE_VIEWS.find((view) => view.value === changeView)?.label,
     menuTitle:
       menu === "quote"

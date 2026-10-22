@@ -2,13 +2,32 @@ import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
 import { CORNER_RADIUS, type ThemeColors } from "@/src/lib/theme";
 import { SymbolView } from "expo-symbols";
 import { memo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native";
 
 import type { MarketAsset, MarketMovement } from "@/src/types/market";
 import { AssetAvatar } from "./AssetAvatar";
 
 export const MARKET_ROW_HEIGHT = 100;
 export type MarketChangeView = "24h" | "update" | "both";
+
+export function getMarketRowHeight(
+  compact = false,
+  changeView: MarketChangeView = "24h",
+  fontScale = 1,
+): number {
+  const height = compact
+    ? changeView === "both"
+      ? 88
+      : 72
+    : MARKET_ROW_HEIGHT;
+  return Math.ceil(height * Math.max(1, fontScale));
+}
 
 function formatPrice(price: number): string {
   if (price < 0.000001) return price.toExponential(2);
@@ -73,6 +92,7 @@ function ChangeValue({
 export const MarketRow = memo(function MarketRow({
   asset,
   changeView = "24h",
+  compact = false,
   movement,
   watched,
   watchlistDisabled,
@@ -80,6 +100,7 @@ export const MarketRow = memo(function MarketRow({
 }: {
   asset: MarketAsset;
   changeView?: MarketChangeView;
+  compact?: boolean;
   movement?: MarketMovement;
   watched: boolean;
   watchlistDisabled: boolean;
@@ -87,17 +108,25 @@ export const MarketRow = memo(function MarketRow({
 }) {
   const { colors: accountColors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
+  const { fontScale } = useWindowDimensions();
   const { ticker } = asset;
+  const amount = ticker ? formatPrice(ticker.price) : "Unavailable";
   const elapsed = movement
     ? (movement.receivedAt - movement.previousReceivedAt) / 1000
     : 0;
   const interval = elapsed < 1 ? "<1s" : `${Math.round(elapsed)}s`;
 
   return (
-    <View style={styles.slot}>
-      <View style={styles.row}>
-        <AssetAvatar symbol={asset.baseAsset} size={36} />
-        <View style={styles.asset}>
+    <View
+      style={[
+        styles.slot,
+        { height: getMarketRowHeight(compact, changeView, fontScale) },
+        compact && styles.compactSlot,
+      ]}
+    >
+      <View style={[styles.row, compact && styles.compactRow]}>
+        <AssetAvatar symbol={asset.baseAsset} size={compact ? 32 : 36} />
+        <View style={[styles.asset, compact && styles.compactContent]}>
           <Text
             style={[
               styles.symbol,
@@ -123,16 +152,19 @@ export const MarketRow = memo(function MarketRow({
             />
           ) : null}
         </View>
-        <View style={styles.price}>
+        <View style={[styles.price, compact && styles.compactContent]}>
           <Text
             style={styles.amount}
+            accessibilityLabel={`${asset.symbol}: ${ticker ? `${amount} ${asset.quoteAsset}` : "price unavailable"}`}
             numberOfLines={1}
             adjustsFontSizeToFit
             minimumFontScale={0.8}
           >
-            {ticker ? formatPrice(ticker.price) : "Unavailable"}
+            {amount}
           </Text>
-          <Text style={styles.quote}>{asset.quoteAsset}</Text>
+          {!compact ? (
+            <Text style={styles.quote}>{asset.quoteAsset}</Text>
+          ) : null}
           {changeView === "update" ? (
             <ChangeValue
               symbol={asset.symbol}
@@ -154,6 +186,7 @@ export const MarketRow = memo(function MarketRow({
         <Pressable
           style={[
             styles.watchButton,
+            compact && styles.compactWatchButton,
             watchlistDisabled && styles.disabledControl,
           ]}
           accessibilityRole="checkbox"
@@ -182,7 +215,6 @@ export const MarketRow = memo(function MarketRow({
 const createStyles = (accountColors: ThemeColors) =>
   StyleSheet.create({
     slot: {
-      height: MARKET_ROW_HEIGHT,
       paddingHorizontal: 20,
       paddingBottom: 10,
     },
@@ -198,6 +230,17 @@ const createStyles = (accountColors: ThemeColors) =>
       borderRadius: CORNER_RADIUS.card,
       backgroundColor: accountColors.surface,
     },
+    compactSlot: { paddingBottom: 0 },
+    compactRow: {
+      paddingLeft: 0,
+      paddingRight: 0,
+      borderWidth: 0,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderRadius: 0,
+      backgroundColor: accountColors.background,
+    },
+    compactContent: { gap: 4 },
+    compactWatchButton: { height: 52 },
     asset: { flex: 1, minWidth: 0, gap: 6 },
     watchButton: {
       width: 44,

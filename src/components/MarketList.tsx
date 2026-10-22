@@ -21,11 +21,12 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MarketOptionsModal, MarketOptionsSheet } from "./MarketOptionsModal";
-import { MARKET_ROW_HEIGHT, MarketRow } from "./MarketRow";
+import { getMarketRowHeight, MarketRow } from "./MarketRow";
 import { MarketSuggestions } from "./MarketSuggestions";
 
 export type MarketListData = {
@@ -74,8 +75,7 @@ export function MarketList({
     search,
     setSearch,
     quote,
-    sort,
-    sortSnapshot,
+    sorting,
     changeView,
     menu,
     setMenu,
@@ -84,19 +84,22 @@ export function MarketList({
     watchlistOnly,
     restorePosition,
   } = model;
+  const { fontScale } = useWindowDimensions();
+  const rowHeight = getMarketRowHeight(!watchlistOnly, changeView, fontScale);
   const [pullRefreshing, setPullRefreshing] = useState(false);
   const restoringPosition = useRef(true);
   const rowState = useMemo(
     () => ({
       changeView,
+      rowHeight,
       movements: stale || paused ? null : movements,
       watched,
       watchlistDisabled,
     }),
-    [changeView, movements, stale, paused, watched, watchlistDisabled],
+    [changeView, rowHeight, movements, stale, paused, watched, watchlistDisabled],
   );
   const refreshUnavailable = loading || paused || retryAt !== null;
-  useLayoutEffect(() => restorePosition(), [restorePosition]);
+  useLayoutEffect(() => restorePosition(rowHeight), [restorePosition, rowHeight]);
 
   function openMenu(value: NonNullable<typeof menu>) {
     Keyboard.dismiss();
@@ -241,7 +244,7 @@ export function MarketList({
                 disabled={!snapshot}
                 style={[styles.filter, !snapshot && styles.disabledControl]}
                 accessibilityRole="button"
-                accessibilityLabel={`Sort markets: ${model.sortLabel}`}
+                accessibilityLabel={`Sort markets: ${sorting.description}`}
                 accessibilityState={{
                   expanded: menu === "sort",
                   disabled: !snapshot,
@@ -257,11 +260,7 @@ export function MarketList({
                   size={18}
                 />
                 <Text style={styles.filterLabel}>
-                  {sort === "name"
-                    ? "A-Z"
-                    : sort === "gainers"
-                      ? "Gainers"
-                      : "Losers"}
+                  {sorting.label}
                 </Text>
               </Pressable>
               <Pressable
@@ -300,10 +299,10 @@ export function MarketList({
                 })}
               </Text>
             )}
-            {sort !== "name" && sortSnapshot ? (
+            {sorting.rankedAt !== null ? (
               <Text style={[styles.caption, styles.rankingTime]}>
                 Ranked{" "}
-                {new Date(sortSnapshot.receivedAt).toLocaleTimeString([], {
+                {new Date(sorting.rankedAt).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
                   second: "2-digit",
@@ -404,6 +403,7 @@ export function MarketList({
               <MarketRow
                 asset={item}
                 changeView={changeView}
+                compact={!watchlistOnly}
                 movement={
                   stale || paused ? undefined : movements.get(item.symbol)
                 }
@@ -413,14 +413,14 @@ export function MarketList({
               />
             )}
             getItemLayout={(_data, index) => ({
-              length: MARKET_ROW_HEIGHT,
-              offset: MARKET_ROW_HEIGHT * index,
+              length: rowHeight,
+              offset: rowHeight * index,
               index,
             })}
             initialNumToRender={12}
             onContentSizeChange={() => {
               if (!restoringPosition.current) return;
-              model.restorePosition();
+              model.restorePosition(rowHeight);
               restoringPosition.current = false;
             }}
             onScroll={(event) => {
