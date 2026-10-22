@@ -1,5 +1,11 @@
-import { getSignals, type AssetSignal } from "@/src/services/signal/signalService";
-import { getSavedSignals, saveSignals } from "@/src/services/signal/signalStorage";
+import {
+  getSignals,
+  type AssetSignal,
+} from "@/src/services/signal/signalService";
+import {
+  getSavedSignals,
+  saveSignals,
+} from "@/src/services/signal/signalStorage";
 import {
   useCallback,
   useEffect,
@@ -18,7 +24,6 @@ type SignalState = {
   loading: boolean;
   error: string | null;
   cacheError: string | null;
-  updatedAt: number | null;
 };
 type Scope = {
   active: boolean;
@@ -41,7 +46,6 @@ const initialState = (
   loading: signature !== null && JSON.parse(signature).length > 0,
   error: null,
   cacheError: null,
-  updatedAt: null,
 });
 
 export function useSignals(userId: string, symbols: string[] | null) {
@@ -53,6 +57,7 @@ export function useSignals(userId: string, symbols: string[] | null) {
   );
 
   useLayoutEffect(() => {
+    // Each account/watchlist owns its requests; late results cannot replace a newer scope.
     const current: Scope = {
       active: true,
       foreground: AppState.currentState === "active",
@@ -116,7 +121,6 @@ export function useSignals(userId: string, symbols: string[] | null) {
           failures: result.failures,
           freshSymbols: result.signals.map((item) => item.symbol),
           loading: false,
-          updatedAt: result.signals.length ? updatedAt : previous.updatedAt,
           error:
             result.signals.length === 0
               ? "Unable to update hourly readings. Saved readings are shown where available."
@@ -168,7 +172,6 @@ export function useSignals(userId: string, symbols: string[] | null) {
         setState({
           ...initialState(userId, signature),
           signals: owner.readings,
-          updatedAt: saved?.savedAt ?? null,
         });
       })
       .catch(() => {

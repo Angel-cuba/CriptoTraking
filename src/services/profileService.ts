@@ -3,7 +3,7 @@ import type { Profile, ProfileUpdate } from "@/src/types/profile";
 
 const columns = "id, display_name, risk_profile, watchlist, updated_at";
 
-export async function getProfile(userId: string): Promise<Profile | null> {
+async function getProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabaseClient
     .from("profiles")
     .select(columns)

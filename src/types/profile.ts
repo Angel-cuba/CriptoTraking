@@ -1,10 +1,4 @@
-export const RISK_PROFILES = [
-  "conservative",
-  "balanced",
-  "aggressive",
-] as const;
-
-export type RiskProfile = (typeof RISK_PROFILES)[number];
+type RiskProfile = "conservative" | "balanced" | "aggressive";
 export type Profile = {
   id: string;
   display_name: string;

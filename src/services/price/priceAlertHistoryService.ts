@@ -13,9 +13,9 @@ import type {
   PriceAlertNotificationStatus,
 } from "@/src/types/priceAlert";
 
-export const MAX_PRICE_ALERT_EVENTS = 100;
+const MAX_PRICE_ALERT_EVENTS = 100;
 
-export function createPriceAlertHistory(userId: string): PriceAlertHistory {
+function createPriceAlertHistory(userId: string): PriceAlertHistory {
   return {
     version: 3,
     userId,

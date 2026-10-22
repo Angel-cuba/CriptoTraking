@@ -5,7 +5,7 @@ export type NotificationPermission =
   | "denied"
   | "undetermined"
   | "unsupported";
-export type NotificationChannel = "signals" | "price-alerts";
+type NotificationChannel = "signals" | "price-alerts";
 
 export const notificationsSupported = false;
 export function configureSignalNotifications(

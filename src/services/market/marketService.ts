@@ -12,7 +12,7 @@ export type MarketCandle = {
   close: number;
 };
 
-export function parseCandles(data: unknown): MarketCandle[] {
+function parseCandles(data: unknown): MarketCandle[] {
   if (!Array.isArray(data)) throw new Error("Invalid market response.");
   return data.map((row) => {
     if (

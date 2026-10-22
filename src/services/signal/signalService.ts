@@ -5,13 +5,13 @@ import {
 } from "@/src/services/market/marketService";
 
 export type AssetSignal = SignalResult & { symbol: string; checkedAt?: number };
-export type SignalBatch = {
+type SignalBatch = {
   signals: AssetSignal[];
   failures: Record<string, string>;
 };
 const BATCH_SIZE = 3;
 
-export async function getAssetSignal(
+async function getAssetSignal(
   symbol: string,
   signal?: AbortSignal,
 ): Promise<AssetSignal> {
@@ -51,10 +51,7 @@ export async function getSignals(
         Promise.all(
           batch.map(async (symbol) => {
             try {
-              const reading = await getAssetSignal(
-                symbol,
-                controller.signal,
-              );
+              const reading = await getAssetSignal(symbol, controller.signal);
               if (!controller.signal.aborted) readings.set(symbol, reading);
             } catch (failure) {
               if (controller.signal.aborted) return;

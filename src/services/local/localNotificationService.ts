@@ -10,7 +10,7 @@ export type NotificationPermission =
   | "denied"
   | "undetermined"
   | "unsupported";
-export type NotificationChannel = "signals" | "price-alerts";
+type NotificationChannel = "signals" | "price-alerts";
 const kind = "kripto.signal";
 let presentationGuard: ((userId: string, symbol: string) => boolean) | null =
   null;

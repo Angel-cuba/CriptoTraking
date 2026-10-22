@@ -109,7 +109,7 @@ function parseDecimal(value: unknown): number {
   return Number(value);
 }
 
-export function parseMarketCatalog(data: unknown): MarketSymbol[] {
+function parseMarketCatalog(data: unknown): MarketSymbol[] {
   if (!isRecord(data) || !Array.isArray(data.symbols)) {
     throw new Error("Invalid market catalog response.");
   }
@@ -139,7 +139,7 @@ export function parseMarketCatalog(data: unknown): MarketSymbol[] {
   return [...symbols.values()].sort((a, b) => a.symbol.localeCompare(b.symbol));
 }
 
-export function parseMarketTickers(data: unknown): Map<string, MarketTicker> {
+function parseMarketTickers(data: unknown): Map<string, MarketTicker> {
   if (!Array.isArray(data)) {
     throw new Error("Invalid market ticker response.");
   }

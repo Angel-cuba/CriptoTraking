@@ -8,7 +8,7 @@ import {
 } from "@/src/services/signal/signalNotificationStorage";
 import type { AssetSignal } from "@/src/services/signal/signalService";
 
-export function getNewSignals(
+function getNewSignals(
   signals: AssetSignal[],
   observed: NotificationState["observed"],
   watchlist: string[],

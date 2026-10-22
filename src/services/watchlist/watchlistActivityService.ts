@@ -1,6 +1,6 @@
 import type { MarketSnapshot } from "@/src/types/market";
 
-export const ACTIVITY_REFRESH_MS = 6 * 60 * 60 * 1000;
+const ACTIVITY_REFRESH_MS = 6 * 60 * 60 * 1000;
 export type WatchlistActivity = {
   version: 1;
   symbols: string[];
@@ -52,12 +52,14 @@ export function calculateWatchlistActivity(
 ): WatchlistActivity | null {
   const unique = [...new Set(symbols)].sort();
   const ranges = getWatchlistRanges(unique, snapshot).sort((a, b) => a - b);
+  // Require every followed pair so missing data cannot skew the summary.
   if (
     unique.length === 0 ||
     ranges.length !== unique.length ||
     snapshot.receivedAt > now
   )
     return null;
+  // The median limits the influence of a single pair with an extreme range.
   const middle = Math.floor(ranges.length / 2);
   const rangePercent =
     ranges.length % 2

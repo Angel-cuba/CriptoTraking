@@ -144,6 +144,7 @@ export default function MarketsScreen() {
         asset.symbol.toUpperCase().includes(query),
     );
 
+    // Rank from the user's last selection; rows keep showing current prices.
     const ranking = new Map(
       sortSnapshot?.assets.map((asset) => [
         asset.symbol,

@@ -1,6 +1,6 @@
 import type { MarketCandle } from "@/src/services/market/marketService";
 
-export type SignalType = "BUY" | "SELL" | "NEUTRAL";
+type SignalType = "BUY" | "SELL" | "NEUTRAL";
 export type SignalResult = {
   type: SignalType;
   reason: string;

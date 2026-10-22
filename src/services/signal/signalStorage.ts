@@ -5,7 +5,7 @@ import {
   writeSignalData,
 } from "@/src/services/signal/signalStorageBackend";
 
-export type SavedSignals = {
+type SavedSignals = {
   version: 2;
   userId: string;
   savedAt: number;
