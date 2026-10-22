@@ -1,5 +1,10 @@
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
-import { getTabContentPadding, type ThemeColors } from "@/src/lib/theme";
+import {
+  CONTROL_HEIGHT,
+  CORNER_RADIUS,
+  getTabContentPadding,
+  type ThemeColors,
+} from "@/src/lib/theme";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -101,22 +106,26 @@ export default function MarketsScreen() {
   );
   const refreshUnavailable = loading || paused || retryAt !== null;
   const [search, setSearch] = useState("");
-  const [quote, setQuote] = useState("USDT");
+  const [quote, setQuote] = useState("ALL");
   const [sort, setSort] = useState<Sort>("name");
   const [sortSnapshot, setSortSnapshot] = useState<MarketSnapshot | null>(null);
-  const [menu, setMenu] = useState<"quote" | "sort" | null>(null);
-  const [watchlistOnly, setWatchlistOnly] = useState(false);
+  const [menu, setMenu] = useState<"quote" | "sort" | "change" | null>(null);
+  const [watchlistOnly, setWatchlistOnly] = useState(true);
+
+  const changeScope = useCallback((onlyWatched: boolean) => {
+    setWatchlistOnly(onlyWatched);
+    setSearch("");
+    setQuote(onlyWatched ? "ALL" : "USDT");
+    setMenu(null);
+    list.current?.scrollToOffset({ offset: 0, animated: false });
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       if (scope !== "watchlist") return;
-      setWatchlistOnly(true);
-      setSearch("");
-      setQuote("ALL");
-      setMenu(null);
-      list.current?.scrollToOffset({ offset: 0, animated: false });
+      changeScope(true);
       router.setParams({ scope: undefined });
-    }, [scope]),
+    }, [scope, changeScope]),
   );
 
   async function refreshList() {
@@ -171,14 +180,20 @@ export default function MarketsScreen() {
           selected: quote === value,
           onSelect: () => setQuote(value),
         }))
-      : SORT_OPTIONS.map((option) => ({
-          label: option.label,
-          selected: sort === option.value,
-          onSelect: () => {
-            setSort(option.value);
-            setSortSnapshot(option.value === "name" ? null : snapshot);
-          },
-        }));
+      : menu === "change"
+        ? CHANGE_VIEWS.map((view) => ({
+            label: view.label,
+            selected: changeView === view.value,
+            onSelect: () => setChangeView(view.value),
+          }))
+        : SORT_OPTIONS.map((option) => ({
+            label: option.label,
+            selected: sort === option.value,
+            onSelect: () => {
+              setSort(option.value);
+              setSortSnapshot(option.value === "name" ? null : snapshot);
+            },
+          }));
 
   let emptyTitle = "No markets found";
   if (error) emptyTitle = "Markets unavailable";
@@ -196,183 +211,148 @@ export default function MarketsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <View style={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.heading}>
-            <Text style={styles.brand}>KRIPTO</Text>
+        <View style={styles.controls}>
+          <View style={styles.header}>
             <Text style={styles.title} accessibilityRole="header">
-              Markets
+              {watchlistOnly ? "My watchlist" : "All markets"}
             </Text>
-          </View>
-          <Pressable
-            onPress={() => void reload()}
-            disabled={refreshUnavailable}
-            style={[
-              styles.iconButton,
-              refreshUnavailable && styles.disabledControl,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Refresh markets"
-            accessibilityState={{ disabled: refreshUnavailable, busy: loading }}
-          >
-            {loading ? (
-              <ActivityIndicator color={accountColors.primary} />
-            ) : (
-              <SymbolView
-                name={{
-                  ios: "arrow.clockwise",
-                  android: "refresh",
-                  web: "refresh",
-                }}
-                tintColor={accountColors.primary}
-                size={22}
-              />
-            )}
-          </Pressable>
-        </View>
-
-        <View style={styles.search}>
-          <SymbolView
-            name={{ ios: "magnifyingglass", android: "search", web: "search" }}
-            tintColor={accountColors.muted}
-            size={19}
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search assets or pairs"
-            placeholderTextColor={accountColors.muted}
-            accessibilityLabel="Search markets"
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={search}
-            onChangeText={setSearch}
-            returnKeyType="search"
-          />
-          {search !== "" && (
             <Pressable
-              onPress={() => setSearch("")}
-              style={styles.clearButton}
+              onPress={() => changeScope(!watchlistOnly)}
               accessibilityRole="button"
-              accessibilityLabel="Clear search"
-            >
-              <SymbolView
-                name={{
-                  ios: "xmark.circle.fill",
-                  android: "cancel",
-                  web: "cancel",
-                }}
-                tintColor={accountColors.muted}
-                size={20}
-              />
-            </Pressable>
-          )}
-        </View>
-
-        <View style={styles.toolbar}>
-          <Pressable
-            onPress={() => setMenu("quote")}
-            style={styles.filter}
-            accessibilityRole="button"
-            accessibilityLabel={`Quote currency: ${quote === "ALL" ? "all pairs" : quote}`}
-            accessibilityState={{ expanded: menu === "quote" }}
-          >
-            <Text style={styles.filterLabel}>
-              {quote === "ALL" ? "All pairs" : quote}
-            </Text>
-            <SymbolView
-              name={{
-                ios: "chevron.down",
-                android: "expand_more",
-                web: "expand_more",
-              }}
-              tintColor={accountColors.text}
-              size={15}
-            />
-          </Pressable>
-          <Pressable
-            onPress={() => setMenu("sort")}
-            disabled={!snapshot}
-            style={[styles.sortButton, !snapshot && styles.disabledControl]}
-            accessibilityRole="button"
-            accessibilityLabel={`Sort markets: ${SORT_OPTIONS.find((option) => option.value === sort)?.label}`}
-            accessibilityState={{
-              expanded: menu === "sort",
-              disabled: !snapshot,
-            }}
-          >
-            <SymbolView
-              name={{
-                ios: "arrow.up.arrow.down",
-                android: "swap_vert",
-                web: "swap_vert",
-              }}
-              tintColor={accountColors.text}
-              size={18}
-            />
-            <Text style={styles.filterLabel}>
-              {sort === "name"
-                ? "A-Z"
-                : sort === "gainers"
-                  ? "Top gainers"
-                  : "Top losers"}
-            </Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.watchlistFilters} accessibilityRole="tablist">
-          {([false, true] as const).map((onlyWatched) => (
-            <Pressable
-              key={String(onlyWatched)}
-              style={[
-                styles.watchlistFilter,
-                watchlistOnly === onlyWatched && styles.selectedFilter,
-              ]}
-              accessibilityRole="tab"
-              accessibilityLabel={onlyWatched ? "My watchlist" : "All markets"}
-              accessibilityState={{ selected: watchlistOnly === onlyWatched }}
-              aria-selected={watchlistOnly === onlyWatched}
-              onPress={() => setWatchlistOnly(onlyWatched)}
-            >
-              <Text
-                style={[
-                  styles.filterLabel,
-                  watchlistOnly === onlyWatched && styles.selectedFilterLabel,
-                ]}
-              >
-                {onlyWatched ? "My watchlist" : "All markets"}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <View
-          style={styles.periodSelector}
-          accessibilityRole="radiogroup"
-          accessibilityLabel="Change period"
-        >
-          {CHANGE_VIEWS.map((view) => (
-            <Pressable
-              key={view.value}
-              onPress={() => setChangeView(view.value)}
-              accessibilityRole="radio"
-              accessibilityLabel={`Change period: ${view.label}`}
-              accessibilityState={{ checked: changeView === view.value }}
-              aria-checked={changeView === view.value}
+              accessibilityLabel={
+                watchlistOnly ? "All markets" : "My watchlist"
+              }
               style={({ pressed }) => [
-                styles.periodOption,
-                changeView === view.value && styles.selectedFilter,
+                styles.scopeButton,
                 pressed && styles.pressedControl,
               ]}
             >
-              <Text
-                style={[
-                  styles.periodLabel,
-                  changeView === view.value && styles.selectedFilterLabel,
-                ]}
+              <Text style={styles.scopeLabel}>
+                {watchlistOnly ? "All markets" : "My watchlist"}
+              </Text>
+              <SymbolView
+                name={{
+                  ios: watchlistOnly ? "chevron.right" : "chevron.left",
+                  android: watchlistOnly ? "chevron_right" : "chevron_left",
+                  web: watchlistOnly ? "chevron_right" : "chevron_left",
+                }}
+                tintColor={accountColors.primary}
+                size={14}
+              />
+            </Pressable>
+          </View>
+          <View style={styles.search}>
+            <SymbolView
+              name={{
+                ios: "magnifyingglass",
+                android: "search",
+                web: "search",
+              }}
+              tintColor={accountColors.muted}
+              size={19}
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search assets or pairs"
+              placeholderTextColor={accountColors.muted}
+              accessibilityLabel={
+                watchlistOnly ? "Search watchlist" : "Search markets"
+              }
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={search}
+              onChangeText={setSearch}
+              returnKeyType="search"
+            />
+            {search !== "" && (
+              <Pressable
+                onPress={() => setSearch("")}
+                style={styles.clearButton}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
               >
-                {view.label}
+                <SymbolView
+                  name={{
+                    ios: "xmark.circle.fill",
+                    android: "cancel",
+                    web: "cancel",
+                  }}
+                  tintColor={accountColors.muted}
+                  size={20}
+                />
+              </Pressable>
+            )}
+          </View>
+          <View style={styles.toolbar}>
+            <Pressable
+              onPress={() => setMenu("quote")}
+              style={styles.filter}
+              accessibilityRole="button"
+              accessibilityLabel={`Quote currency: ${quote === "ALL" ? "all pairs" : quote}`}
+              accessibilityState={{ expanded: menu === "quote" }}
+            >
+              <Text style={styles.filterLabel}>
+                {quote === "ALL" ? "All pairs" : quote}
+              </Text>
+              <SymbolView
+                name={{
+                  ios: "chevron.down",
+                  android: "expand_more",
+                  web: "expand_more",
+                }}
+                tintColor={accountColors.text}
+                size={15}
+              />
+            </Pressable>
+            <Pressable
+              onPress={() => setMenu("sort")}
+              disabled={!snapshot}
+              style={[styles.filter, !snapshot && styles.disabledControl]}
+              accessibilityRole="button"
+              accessibilityLabel={`Sort markets: ${SORT_OPTIONS.find((option) => option.value === sort)?.label}`}
+              accessibilityState={{
+                expanded: menu === "sort",
+                disabled: !snapshot,
+              }}
+            >
+              <SymbolView
+                name={{
+                  ios: "arrow.up.arrow.down",
+                  android: "swap_vert",
+                  web: "swap_vert",
+                }}
+                tintColor={accountColors.text}
+                size={18}
+              />
+              <Text style={styles.filterLabel}>
+                {sort === "name"
+                  ? "A-Z"
+                  : sort === "gainers"
+                    ? "Gainers"
+                    : "Losers"}
               </Text>
             </Pressable>
-          ))}
+            <Pressable
+              onPress={() => setMenu("change")}
+              style={styles.filter}
+              accessibilityRole="button"
+              accessibilityLabel={`Change period: ${CHANGE_VIEWS.find((view) => view.value === changeView)?.label}`}
+              accessibilityState={{ expanded: menu === "change" }}
+            >
+              <Text style={styles.filterLabel}>
+                {CHANGE_VIEWS.find((view) => view.value === changeView)?.label}
+              </Text>
+              <SymbolView
+                name={{
+                  ios: "chevron.down",
+                  android: "expand_more",
+                  web: "expand_more",
+                }}
+                tintColor={accountColors.text}
+                size={15}
+              />
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.summary}>
@@ -402,34 +382,41 @@ export default function MarketsScreen() {
           ) : null}
         </View>
 
-        <View style={styles.status} accessibilityLiveRegion="polite">
-          {profileLoading || saving ? (
-            <Text style={styles.caption}>
-              {saving ? "Saving watchlist…" : "Loading your watchlist…"}
-            </Text>
-          ) : null}
-          <Text style={styles.caption}>
-            {paused
-              ? "Updates paused while the app is in the background."
-              : retryAt !== null
-                ? "Automatic updates are waiting for the market provider."
-                : loading
-                  ? "Updating market prices…"
-                  : "Updates every 60 seconds while the app is active."}
-          </Text>
-          {stale && snapshot ? (
-            <Text style={styles.staleText}>
-              Prices may be outdated. Last received data is shown.
-            </Text>
-          ) : null}
-          {changeView !== "24h" ? (
-            <Text style={styles.caption}>
-              Last update compares prices up to 2 minutes apart. Waiting means
-              no recent comparison is available, including after returning to
-              the app.
-            </Text>
-          ) : null}
-        </View>
+        {profileLoading ||
+        saving ||
+        paused ||
+        retryAt !== null ||
+        loading ||
+        (stale && snapshot) ||
+        changeView !== "24h" ? (
+          <View style={styles.status} accessibilityLiveRegion="polite">
+            {profileLoading || saving ? (
+              <Text style={styles.caption}>
+                {saving ? "Saving watchlist…" : "Loading your watchlist…"}
+              </Text>
+            ) : null}
+            {paused || retryAt !== null || loading ? (
+              <Text style={styles.caption}>
+                {paused
+                  ? "Updates paused while the app is in the background."
+                  : retryAt !== null
+                    ? "Automatic updates are waiting for the market provider."
+                    : "Updating market prices…"}
+              </Text>
+            ) : null}
+            {stale && snapshot ? (
+              <Text style={styles.staleText}>
+                Prices may be outdated. Last received data is shown.
+              </Text>
+            ) : null}
+            {changeView !== "24h" ? (
+              <Text style={styles.caption}>
+                Last update: compares prices up to 2 min apart. Waiting = no
+                recent comparison.
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
 
         {profileError ? (
           <View style={styles.error} accessibilityRole="alert">
@@ -526,7 +513,7 @@ export default function MarketsScreen() {
                   onFollow={(symbol) => void toggle(symbol)}
                 />
                 <Pressable
-                  onPress={() => setWatchlistOnly(false)}
+                  onPress={() => changeScope(false)}
                   accessibilityRole="button"
                   style={styles.retry}
                 >
@@ -569,7 +556,7 @@ export default function MarketsScreen() {
                     {watchlistOnly ? (
                       <Pressable
                         onPress={() => {
-                          if (returnToAllMarkets) setWatchlistOnly(false);
+                          if (returnToAllMarkets) changeScope(false);
                           else {
                             setSearch("");
                             setQuote("ALL");
@@ -594,7 +581,13 @@ export default function MarketsScreen() {
         />
       </View>
       <MarketOptionsModal
-        title={menu === "quote" ? "Quote currency" : "Sort markets"}
+        title={
+          menu === "quote"
+            ? "Quote currency"
+            : menu === "change"
+              ? "Change period"
+              : "Sort markets"
+        }
         visible={menu !== null}
         options={options}
         onClose={() => setMenu(null)}
@@ -605,42 +598,51 @@ export default function MarketsScreen() {
 
 const createStyles = (accountColors: ThemeColors) =>
   StyleSheet.create({
-    container: { flex: 1, backgroundColor: accountColors.background },
+    container: {
+      flex: 1,
+      backgroundColor: accountColors.background,
+      position: "relative",
+    },
     content: { flex: 1, width: "100%", maxWidth: 688, alignSelf: "center" },
+    controls: { paddingTop: 8, paddingHorizontal: 20 },
     header: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 20,
-      paddingTop: 28,
-      paddingBottom: 20,
+      gap: 12,
+      marginBottom: 12,
     },
-    heading: { flex: 1, gap: 5 },
-    brand: {
-      fontSize: 12,
-      color: accountColors.primary,
+    title: {
+      flex: 1,
+      fontSize: 24,
       fontWeight: "700",
-      letterSpacing: 1.8,
+      color: accountColors.text,
     },
-    title: { fontSize: 30, fontWeight: "700", color: accountColors.text },
-    iconButton: {
-      backgroundColor: accountColors.surface,
-      borderRadius: 14,
-      width: 44,
-      height: 44,
+    scopeButton: {
+      flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
+      gap: 6,
+      minHeight: 44,
+      paddingHorizontal: 12,
+      borderRadius: 14,
+      backgroundColor: accountColors.primarySoft,
+    },
+    scopeLabel: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: accountColors.primary,
     },
     search: {
       flexDirection: "row",
       alignItems: "center",
       gap: 10,
-      marginHorizontal: 20,
-      minHeight: 52,
+      minHeight: CONTROL_HEIGHT,
       paddingLeft: 14,
       paddingRight: 4,
       backgroundColor: accountColors.surface,
-      borderRadius: 16,
+      borderRadius: CORNER_RADIUS.control,
+      borderWidth: 1,
+      borderColor: accountColors.border,
     },
     searchInput: {
       flex: 1,
@@ -658,37 +660,29 @@ const createStyles = (accountColors: ThemeColors) =>
     toolbar: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 12,
       justifyContent: "space-between",
-      paddingHorizontal: 20,
-      paddingTop: 12,
+      gap: 6,
+      paddingTop: 8,
     },
     filter: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 10,
+      gap: 6,
       minHeight: 44,
-      paddingHorizontal: 12,
+      paddingHorizontal: 10,
       borderWidth: 1,
       borderColor: accountColors.border,
       borderRadius: 14,
     },
     filterLabel: { fontSize: 14, fontWeight: "500", color: accountColors.text },
-    sortButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      minHeight: 44,
-      paddingHorizontal: 4,
-    },
     summary: {
       flexDirection: "row",
       flexWrap: "wrap",
       justifyContent: "space-between",
       gap: 6,
       paddingHorizontal: 20,
-      paddingTop: 28,
-      paddingBottom: 12,
+      paddingTop: 12,
+      paddingBottom: 8,
     },
     caption: { fontSize: 12, color: accountColors.muted },
     rankingTime: { width: "100%", textAlign: "right", fontSize: 11 },
@@ -704,48 +698,6 @@ const createStyles = (accountColors: ThemeColors) =>
       borderTopWidth: 0,
       borderBottomWidth: 0,
       borderColor: accountColors.border,
-    },
-    watchlistFilters: {
-      flexDirection: "row",
-      gap: 8,
-      paddingHorizontal: 20,
-      paddingTop: 12,
-    },
-    watchlistFilter: {
-      flex: 1,
-      minHeight: 44,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
-      borderColor: accountColors.border,
-      borderRadius: 14,
-    },
-    selectedFilter: {
-      borderColor: accountColors.primary,
-      backgroundColor: accountColors.primarySoft,
-    },
-    selectedFilterLabel: { color: accountColors.primary },
-    periodSelector: {
-      flexDirection: "row",
-      gap: 6,
-      marginHorizontal: 20,
-      marginTop: 12,
-      padding: 4,
-      borderRadius: 16,
-      backgroundColor: accountColors.elevated,
-    },
-    periodOption: {
-      flex: 1,
-      minHeight: 44,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: 4,
-      borderRadius: 12,
-    },
-    periodLabel: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: accountColors.muted,
     },
     pressedControl: { opacity: 0.7 },
     assetColumn: { flex: 1, minWidth: 0 },
