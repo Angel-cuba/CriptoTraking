@@ -26,68 +26,82 @@ export function MarketOptionsModal({
   options,
   onClose,
 }: Props) {
+  return (
+    <Modal visible={visible} transparent onRequestClose={onClose}>
+      <MarketOptionsSheet title={title} options={options} onClose={onClose} />
+    </Modal>
+  );
+}
+
+export function MarketOptionsSheet({
+  title,
+  options,
+  onClose,
+}: Omit<Props, "visible">) {
   const { colors: accountColors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
   return (
-    <Modal visible={visible} transparent onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={onClose}
-          accessibilityRole="button"
-          accessibilityLabel="Close options"
-        />
-        <SafeAreaView
-          style={styles.sheet}
-          edges={["bottom"]}
-          accessibilityViewIsModal
-        >
-          <View style={styles.header}>
-            <Text style={styles.title} accessibilityRole="header">
-              {title}
-            </Text>
+    <View
+      style={[StyleSheet.absoluteFill, styles.backdrop]}
+      accessibilityViewIsModal
+    >
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={onClose}
+        accessibilityRole="button"
+        accessibilityLabel="Close options"
+      />
+      <SafeAreaView
+        style={styles.sheet}
+        edges={["bottom"]}
+        accessibilityViewIsModal
+      >
+        <View style={styles.header}>
+          <Text style={styles.title} accessibilityRole="header">
+            {title}
+          </Text>
+          <Pressable
+            onPress={onClose}
+            style={styles.close}
+            accessibilityRole="button"
+            accessibilityLabel="Close options"
+          >
+            <SymbolView
+              name={{ ios: "xmark", android: "close", web: "close" }}
+              tintColor={accountColors.text}
+              size={18}
+            />
+          </Pressable>
+        </View>
+        <FlatList
+          data={options}
+          keyExtractor={(option) => option.label}
+          keyboardShouldPersistTaps="handled"
+          renderItem={({ item }) => (
             <Pressable
-              onPress={onClose}
-              style={styles.close}
-              accessibilityRole="button"
-              accessibilityLabel="Close options"
+              accessibilityRole="radio"
+              accessibilityLabel={item.label}
+              accessibilityState={{ checked: item.selected }}
+              aria-checked={item.selected}
+              onPress={() => {
+                item.onSelect();
+                onClose();
+              }}
+              style={[styles.option, item.selected && styles.selected]}
             >
-              <SymbolView
-                name={{ ios: "xmark", android: "close", web: "close" }}
-                tintColor={accountColors.text}
-                size={18}
-              />
+              <Text style={styles.label}>{item.label}</Text>
+              {item.selected && (
+                <SymbolView
+                  name={{ ios: "checkmark", android: "check", web: "check" }}
+                  tintColor={accountColors.primary}
+                  size={20}
+                />
+              )}
             </Pressable>
-          </View>
-          <FlatList
-            data={options}
-            keyExtractor={(option) => option.label}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <Pressable
-                accessibilityRole="radio"
-                accessibilityLabel={item.label}
-                aria-checked={item.selected}
-                onPress={() => {
-                  item.onSelect();
-                  onClose();
-                }}
-                style={[styles.option, item.selected && styles.selected]}
-              >
-                <Text style={styles.label}>{item.label}</Text>
-                {item.selected && (
-                  <SymbolView
-                    name={{ ios: "checkmark", android: "check", web: "check" }}
-                    tintColor={accountColors.primary}
-                    size={20}
-                  />
-                )}
-              </Pressable>
-            )}
-          />
-        </SafeAreaView>
-      </View>
-    </Modal>
+          )}
+        />
+      </SafeAreaView>
+    </View>
   );
 }
 
