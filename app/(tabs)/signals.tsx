@@ -1,5 +1,6 @@
 import { Feedback } from "@/src/components/AccountScreen";
 import { ActionButton } from "@/src/components/ActionButton";
+import { BrandArtwork } from "@/src/components/Branding";
 import { MarketSuggestions } from "@/src/components/MarketSuggestions";
 import { SignalCard } from "@/src/components/SignalCard";
 import { useSignalNotifications } from "@/src/context/SignalNotificationContext";
@@ -162,13 +163,16 @@ function SignalsContent({ userId }: { userId: string }) {
         initialNumToRender={8}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>YOUR WATCHLIST</Text>
-            <Text accessibilityRole="header" style={styles.title}>
-              Signals
-            </Text>
-            <Text style={styles.body}>
-              SMA5 / SMA10 crossovers from closed hourly candles.
-            </Text>
+            <View style={styles.brandHeading}>
+              <BrandArtwork subtle />
+              <Text style={styles.eyebrow}>YOUR WATCHLIST</Text>
+              <Text accessibilityRole="header" style={styles.title}>
+                Signals
+              </Text>
+              <Text style={styles.body}>
+                SMA5 / SMA10 crossovers from closed hourly candles.
+              </Text>
+            </View>
             <ActionButton
               title="Refresh signals"
               loading={loading}
@@ -302,6 +306,7 @@ const createStyles = (colors: ThemeColors) =>
     container: { flex: 1, backgroundColor: colors.background },
     content: { width: "100%", maxWidth: 688, alignSelf: "center" },
     header: { padding: 20, paddingTop: 28, gap: 16 },
+    brandHeading: { gap: 12, overflow: "hidden" },
     eyebrow: {
       color: colors.primary,
       fontSize: 12,
@@ -309,7 +314,7 @@ const createStyles = (colors: ThemeColors) =>
       fontWeight: "700",
     },
     title: { color: colors.text, fontSize: 30, fontWeight: "700" },
-    body: { color: colors.muted, fontSize: 13, lineHeight: 20 },
+    body: { color: colors.muted, fontSize: 14, lineHeight: 21 },
     count: {
       color: colors.text,
       fontSize: 15,

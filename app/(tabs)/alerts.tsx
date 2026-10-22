@@ -16,6 +16,7 @@ import {
 } from "react-native-safe-area-context";
 
 import { AppSwitch } from "@/src/components/AppSwitch";
+import { BrandArtwork } from "@/src/components/Branding";
 import { PriceAlertRow } from "@/src/components/PriceAlertRow";
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
 import { useMarketCatalog } from "@/src/hooks/useMarketCatalog";
@@ -209,6 +210,7 @@ export default function AlertsScreen() {
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <View style={styles.content}>
         <View style={styles.header}>
+          <BrandArtwork subtle />
           <Text style={styles.brand}>KRIPTO</Text>
           <Text style={styles.title} accessibilityRole="header">
             Alerts

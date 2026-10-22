@@ -1,4 +1,5 @@
 import { AppearanceSettings } from "@/src/components/AppearanceSettings";
+import { BrandArtwork } from "@/src/components/Branding";
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
 import type { ThemeColors } from "@/src/lib/theme";
 import type { User } from "@supabase/supabase-js";
@@ -70,6 +71,7 @@ function ProfileContent({ user }: { user: User }) {
     <AccountScreen tabbed>
       <View style={accountStyles.gap}>
         <View style={styles.header}>
+          <BrandArtwork subtle />
           <Text style={styles.eyebrow}>YOUR ACCOUNT</Text>
           <Text accessibilityRole="header" style={styles.title}>
             My profile

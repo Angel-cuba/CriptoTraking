@@ -1,19 +1,18 @@
 import { Link } from "expo-router";
 import { useRef, useState } from "react";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+
+import { useThemeStyles } from "@/src/context/ThemeContext";
+import type { ThemeColors } from "@/src/lib/theme";
 
 import { supabaseClient } from "@/src/lib/supabase";
-import {
-  AccountHeading,
-  AccountScreen,
-  Feedback,
-  useAccountStyles,
-} from "./AccountScreen";
+import { Feedback } from "./AccountScreen";
 import { ActionButton } from "./ActionButton";
+import { AuthScreen } from "./AuthScreen";
 import { FormField } from "./FormField";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
-  const accountStyles = useAccountStyles();
+  const styles = useThemeStyles(createStyles);
   const registering = mode === "register";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -78,16 +77,16 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   }
 
   return (
-    <AccountScreen centered>
-      <AccountHeading
-        title={registering ? "Create your account" : "Welcome back"}
-        subtitle={
-          registering
-            ? "Set up your profile and keep your preferences in one place."
-            : "Sign in to your account and pick up where you left off."
-        }
-      />
-      <View style={accountStyles.card}>
+    <AuthScreen
+      title={registering ? "Create your account" : "Welcome back"}
+      subtitle={
+        registering
+          ? "Your watchlist starts here."
+          : "Pick up where you left off."
+      }
+      compact={registering}
+    >
+      <View style={styles.form}>
         <FormField
           label="Email"
           placeholder="you@example.com"
@@ -99,34 +98,36 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           autoComplete="email"
           editable={!loading}
         />
-        <FormField
-          label="Password"
-          password
-          value={password}
-          onChangeText={(value) => change(setPassword, value)}
-          autoCapitalize="none"
-          autoCorrect={false}
-          autoComplete={registering ? "new-password" : "current-password"}
-          editable={!loading}
-          returnKeyType={registering ? "next" : "go"}
-          onSubmitEditing={registering ? undefined : () => void submit()}
-        />
+        <View style={styles.password}>
+          <FormField
+            label="Password"
+            password
+            value={password}
+            onChangeText={(value) => change(setPassword, value)}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete={registering ? "new-password" : "current-password"}
+            editable={!loading}
+            returnKeyType={registering ? "next" : "go"}
+            onSubmitEditing={registering ? undefined : () => void submit()}
+          />
+          {registering ? (
+            <Text style={styles.hint}>Use at least 8 characters.</Text>
+          ) : null}
+        </View>
         {registering ? (
-          <>
-            <Text style={accountStyles.body}>Use at least 8 characters.</Text>
-            <FormField
-              label="Confirm password"
-              password
-              value={confirmation}
-              onChangeText={(value) => change(setConfirmation, value)}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="new-password"
-              editable={!loading}
-              returnKeyType="go"
-              onSubmitEditing={() => void submit()}
-            />
-          </>
+          <FormField
+            label="Confirm password"
+            password
+            value={confirmation}
+            onChangeText={(value) => change(setConfirmation, value)}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="new-password"
+            editable={!loading}
+            returnKeyType="go"
+            onSubmitEditing={() => void submit()}
+          />
         ) : null}
         <Feedback message={error} />
         <Feedback message={message} success />
@@ -136,19 +137,44 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           onPress={() => void submit()}
         />
       </View>
-      <View style={accountStyles.footer}>
-        <Text style={accountStyles.body}>
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>
           {registering ? "Already have an account?" : "New to Kripto?"}
         </Text>
         <Link
           href={registering ? "/login" : "/register"}
           replace
           disabled={loading}
-          style={accountStyles.link}
+          style={styles.link}
         >
           {registering ? "Sign in" : "Create an account"}
         </Link>
       </View>
-    </AccountScreen>
+    </AuthScreen>
   );
 }
+
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    form: { gap: 20 },
+    password: { gap: 6 },
+    hint: { color: colors.muted, fontSize: 12, lineHeight: 18 },
+    footer: {
+      marginTop: 18,
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      justifyContent: "center",
+      columnGap: 6,
+    },
+    footerText: { color: colors.muted, fontSize: 13, lineHeight: 20 },
+    link: {
+      color: colors.primary,
+      fontWeight: "600",
+      fontSize: 13,
+      lineHeight: 20,
+      paddingVertical: 12,
+      minHeight: 44,
+      textDecorationLine: "underline",
+    },
+  });

@@ -6,9 +6,10 @@ import {
   ThemeProvider,
   router,
 } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useMemo } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { View } from "react-native";
 import "react-native-reanimated";
 
 import {
@@ -17,12 +18,16 @@ import {
   useAccountStyles,
 } from "@/src/components/AccountScreen";
 import { ActionButton } from "@/src/components/ActionButton";
+import { BrandSplash } from "@/src/components/Branding";
 import { AuthProvider } from "@/src/context/AuthContext";
 import { useAuth } from "@/src/hooks/useAuth";
 import { listenForPriceAlertNotificationTap } from "@/src/services/price/priceAlertNotificationService";
 
 export { ErrorBoundary } from "expo-router";
 export const unstable_settings = { initialRouteName: "index" };
+
+// Keep the native background until the saved theme has rendered its first frame.
+void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
   return (
@@ -51,12 +56,17 @@ function ThemedApp() {
   }, [mode, colors]);
   if (!ready) return null;
   return (
-    <ThemeProvider value={navigationTheme}>
-      <AuthProvider>
-        <RootNavigator />
-      </AuthProvider>
-      <StatusBar style={mode === "dark" ? "light" : "dark"} />
-    </ThemeProvider>
+    <View
+      style={{ flex: 1, backgroundColor: colors.background }}
+      onLayout={() => SplashScreen.hide()}
+    >
+      <ThemeProvider value={navigationTheme}>
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
+        <StatusBar style={mode === "dark" ? "light" : "dark"} />
+      </ThemeProvider>
+    </View>
   );
 }
 
@@ -71,21 +81,13 @@ function RootNavigator() {
       router.navigate("/alerts"),
     );
   }, [userId, loading, error]);
-  if (loading || error) {
+  if (loading) return <BrandSplash />;
+  if (error) {
     return (
       <AccountScreen centered>
         <View style={accountStyles.card}>
-          {loading ? (
-            <>
-              <ActivityIndicator color={accountColors.primary} />
-              <Text style={accountStyles.body}>Restoring your session…</Text>
-            </>
-          ) : (
-            <>
-              <Feedback message={error} />
-              <ActionButton title="Try again" onPress={() => void retry()} />
-            </>
-          )}
+          <Feedback message={error} />
+          <ActionButton title="Try again" onPress={() => void retry()} />
         </View>
       </AccountScreen>
     );

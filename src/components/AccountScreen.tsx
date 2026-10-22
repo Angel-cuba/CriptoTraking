@@ -18,6 +18,8 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
+import { BrandMark } from "./Branding";
+
 export function useAccountStyles() {
   return useThemeStyles(createAccountStyles);
 }
@@ -65,9 +67,7 @@ export function AccountHeading({
   const styles = useThemeStyles(createStyles);
   return (
     <View style={styles.heading}>
-      <View style={styles.brandMark}>
-        <Text style={styles.brandLetter}>K</Text>
-      </View>
+      <BrandMark size={52} />
       <Text style={styles.brand}>KRIPTO</Text>
       <Text accessibilityRole="header" style={styles.title}>
         {title}
@@ -138,20 +138,6 @@ const createStyles = (accountColors: ThemeColors) =>
     content: { width: "100%", maxWidth: 640, alignSelf: "center" },
     authContent: { maxWidth: 460 },
     heading: { marginBottom: 28 },
-    brandMark: {
-      width: 44,
-      height: 44,
-      borderRadius: 14,
-      backgroundColor: accountColors.action,
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: 12,
-    },
-    brandLetter: {
-      color: accountColors.onPrimary,
-      fontWeight: "800",
-      fontSize: 25,
-    },
     brand: {
       color: accountColors.primary,
       fontSize: 12,
