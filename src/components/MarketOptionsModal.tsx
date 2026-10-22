@@ -1,5 +1,5 @@
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
-import type { ThemeColors } from "@/src/lib/theme";
+import { CORNER_RADIUS, type ThemeColors } from "@/src/lib/theme";
 import { SymbolView } from "expo-symbols";
 import {
   FlatList,
@@ -107,8 +107,8 @@ const createStyles = (accountColors: ThemeColors) =>
       borderColor: accountColors.border,
       overflow: "hidden",
       backgroundColor: accountColors.surface,
-      borderTopLeftRadius: 26,
-      borderTopRightRadius: 26,
+      borderTopLeftRadius: CORNER_RADIUS.sheet,
+      borderTopRightRadius: CORNER_RADIUS.sheet,
     },
     header: {
       flexDirection: "row",

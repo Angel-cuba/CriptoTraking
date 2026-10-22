@@ -2,6 +2,8 @@ export type ThemeMode = "light" | "dark";
 
 export const THEME_STORAGE_KEY = "kripto.appearance.v1";
 export const TAB_BAR_HEIGHT = 72;
+export const CONTROL_HEIGHT = 54;
+export const CORNER_RADIUS = { control: 16, card: 24, sheet: 32 } as const;
 export const getTabContentPadding = (bottomInset: number) =>
   TAB_BAR_HEIGHT + Math.max(bottomInset, 16) + 32;
 

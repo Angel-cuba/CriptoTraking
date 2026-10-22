@@ -1,6 +1,6 @@
 import { AssetAvatar } from "@/src/components/AssetAvatar";
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
-import type { ThemeColors } from "@/src/lib/theme";
+import { CORNER_RADIUS, type ThemeColors } from "@/src/lib/theme";
 import type { AssetSignal } from "@/src/services/signal/signalService";
 import type { MarketSymbol } from "@/src/types/market";
 import { SymbolView } from "expo-symbols";
@@ -150,7 +150,7 @@ const createStyles = (colors: ThemeColors) =>
       marginHorizontal: 20,
       marginBottom: 14,
       gap: 10,
-      borderRadius: 22,
+      borderRadius: CORNER_RADIUS.card,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.surface,

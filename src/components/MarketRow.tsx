@@ -1,5 +1,5 @@
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
-import type { ThemeColors } from "@/src/lib/theme";
+import { CORNER_RADIUS, type ThemeColors } from "@/src/lib/theme";
 import { SymbolView } from "expo-symbols";
 import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -7,7 +7,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { MarketAsset, MarketMovement } from "@/src/types/market";
 import { AssetAvatar } from "./AssetAvatar";
 
-export const MARKET_ROW_HEIGHT = 110;
+export const MARKET_ROW_HEIGHT = 100;
 export type MarketChangeView = "24h" | "update" | "both";
 
 function formatPrice(price: number): string {
@@ -195,7 +195,7 @@ const createStyles = (accountColors: ThemeColors) =>
       gap: 10,
       borderWidth: 1,
       borderColor: accountColors.border,
-      borderRadius: 20,
+      borderRadius: CORNER_RADIUS.card,
       backgroundColor: accountColors.surface,
     },
     asset: { flex: 1, minWidth: 0, gap: 6 },

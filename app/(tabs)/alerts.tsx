@@ -21,7 +21,11 @@ import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
 import { useMarketCatalog } from "@/src/hooks/useMarketCatalog";
 import { usePriceAlerts } from "@/src/hooks/usePriceAlerts";
 import { useProfile } from "@/src/hooks/useProfile";
-import { getTabContentPadding, type ThemeColors } from "@/src/lib/theme";
+import {
+  CORNER_RADIUS,
+  getTabContentPadding,
+  type ThemeColors,
+} from "@/src/lib/theme";
 import { DEFAULT_PRICE_ALERT_SETTINGS } from "@/src/services/price/priceAlertService";
 
 const FILTERS = [
@@ -511,7 +515,7 @@ const createStyles = (colors: ThemeColors) =>
     monitoringCard: {
       padding: 18,
       gap: 12,
-      borderRadius: 20,
+      borderRadius: CORNER_RADIUS.card,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.surface,
@@ -538,7 +542,7 @@ const createStyles = (colors: ThemeColors) =>
     summary: {
       padding: 18,
       gap: 6,
-      borderRadius: 20,
+      borderRadius: CORNER_RADIUS.card,
       borderWidth: 1,
       borderColor: colors.border,
       backgroundColor: colors.surface,

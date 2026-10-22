@@ -1,5 +1,10 @@
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
-import type { ThemeColors } from "@/src/lib/theme";
+import {
+  CONTROL_HEIGHT,
+  CORNER_RADIUS,
+  type ThemeColors,
+} from "@/src/lib/theme";
+import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import {
   Pressable,
@@ -42,11 +47,20 @@ export function FormField({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`${visible ? "Hide" : "Show"} ${label.toLowerCase()}`}
+            accessibilityState={{ disabled: props.editable === false }}
             disabled={props.editable === false}
             onPress={() => setVisible((value) => !value)}
             style={styles.toggle}
           >
-            <Text style={styles.toggleText}>{visible ? "Hide" : "Show"}</Text>
+            <SymbolView
+              name={{
+                ios: visible ? "eye.slash" : "eye",
+                android: visible ? "visibility_off" : "visibility",
+                web: visible ? "visibility_off" : "visibility",
+              }}
+              tintColor={accountColors.muted}
+              size={20}
+            />
           </Pressable>
         ) : null}
       </View>
@@ -63,14 +77,14 @@ const createStyles = (accountColors: ThemeColors) =>
       alignItems: "center",
       borderWidth: 1,
       borderColor: accountColors.border,
-      borderRadius: 14,
-      backgroundColor: accountColors.background,
+      borderRadius: CORNER_RADIUS.control,
+      backgroundColor: accountColors.elevated,
     },
     focused: { borderColor: accountColors.primary },
     input: {
       flex: 1,
       minWidth: 0,
-      minHeight: 52,
+      minHeight: CONTROL_HEIGHT,
       padding: 14,
       fontSize: 16,
       color: accountColors.text,
@@ -81,10 +95,5 @@ const createStyles = (accountColors: ThemeColors) =>
       justifyContent: "center",
       alignItems: "center",
       paddingHorizontal: 10,
-    },
-    toggleText: {
-      color: accountColors.primary,
-      fontWeight: "600",
-      fontSize: 14,
     },
   });

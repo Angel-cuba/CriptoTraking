@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { AssetAvatar } from "@/src/components/AssetAvatar";
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
-import type { ThemeColors } from "@/src/lib/theme";
+import { CORNER_RADIUS, type ThemeColors } from "@/src/lib/theme";
 import type { MarketSymbol } from "@/src/types/market";
 import type {
   PriceAlertEvent,
@@ -147,7 +147,7 @@ const createStyles = (colors: ThemeColors) =>
       gap: 16,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 24,
+      borderRadius: CORNER_RADIUS.card,
       backgroundColor: colors.surface,
     },
     topLine: {

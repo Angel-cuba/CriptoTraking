@@ -1,5 +1,9 @@
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
-import { getTabContentPadding, type ThemeColors } from "@/src/lib/theme";
+import {
+  CORNER_RADIUS,
+  getTabContentPadding,
+  type ThemeColors,
+} from "@/src/lib/theme";
 import type { PropsWithChildren } from "react";
 import {
   KeyboardAvoidingView,
@@ -101,7 +105,7 @@ const createAccountStyles = (accountColors: ThemeColors) =>
   StyleSheet.create({
     card: {
       backgroundColor: accountColors.surface,
-      borderRadius: 24,
+      borderRadius: CORNER_RADIUS.card,
       padding: 20,
       borderWidth: 1,
       borderColor: accountColors.border,

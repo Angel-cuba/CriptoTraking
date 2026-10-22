@@ -16,6 +16,9 @@ export function AssetAvatar({
     BTC: { label: "₿", color: colors.primary, background: colors.primarySoft },
     ETH: { label: "Ξ", color: colors.accent, background: colors.elevated },
     SOL: { label: "S", color: colors.success, background: colors.successSoft },
+    USDT: { label: "$", color: colors.text, background: colors.action },
+    USDC: { label: "$", color: colors.danger, background: colors.successSoft },
+    USD: { label: "$", color: colors.text, background: colors.success },
   };
   const asset = assets[symbol];
   return (

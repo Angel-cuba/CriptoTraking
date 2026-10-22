@@ -1,4 +1,5 @@
 import { useAppTheme } from "@/src/context/ThemeContext";
+import { CONTROL_HEIGHT, CORNER_RADIUS } from "@/src/lib/theme";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
 
@@ -79,10 +80,10 @@ export function ActionButton({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 52,
+    minHeight: CONTROL_HEIGHT,
     paddingHorizontal: 18,
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: CORNER_RADIUS.control,
     borderWidth: 1,
     justifyContent: "center",
     alignItems: "center",
