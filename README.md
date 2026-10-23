@@ -10,7 +10,7 @@ The bottom tabs appear in this order: **Markets → Signals → Alerts → Profi
 
 | Screen | Behavior |
 | --- | --- |
-| Markets | Search spot pairs, filter by quote currency, sort by name or 24h change, and manage the watchlist. |
+| Markets | Start with the personal watchlist and open All markets in a full-screen catalog to search spot pairs, filter by quote currency, sort by name or 24h change, and follow or unfollow pairs. |
 | Signals | View hourly SMA5/SMA10 crossovers for followed pairs and expand their explanations, averages and timestamps. |
 | Alerts | Inspect price-movement history, filter upward/downward events, pause monitoring and enable price notifications. |
 | Profile | Edit the display name, review watchlist activity and pair count, open Markets to manage followed pairs, change appearance, configure signal alerts and sign out. |
@@ -94,17 +94,21 @@ Signing out does not erase account-scoped market history. Another account uses s
 
 ## Markets and price alerts
 
+Markets opens **My watchlist** across all quote currencies. **All markets** opens a full-screen catalog with compact rows and no bottom tabs. Search, quote, sorting and change-period selections are independent in the two views. Closing the catalog returns to the existing watchlist view; reopening it retains its selections and scroll position while Markets remains mounted. These view preferences are not persisted across app restarts.
+
+Both views share the same price snapshots and saved watchlist. Following or unfollowing a pair updates both views; browsing or clearing filters does not change saved entries. Catalog rows allow extra height for **Both** and larger system text, while watchlist rows retain their card layout.
+
 The catalog combines active spot symbols from Binance `/api/v3/exchangeInfo` with rolling summaries from `/api/v3/ticker/24hr`. Catalog metadata is cached in memory for five minutes.
 
 Selecting gainers or losers captures a ranking from the currently displayed snapshot. Prices keep updating, but their 24h changes do not reorder the rows until a sort option is selected again. The **Ranked** timestamp identifies that snapshot. Search, quote and watchlist filters retain the selected ranking; choosing A-Z clears it. Ranking is unavailable until the first snapshot loads.
 
-Empty watchlist views distinguish no followed pairs, filters with no matches and followed pairs unavailable in the current catalog. **Clear filters** resets search and quote currency to all pairs while retaining the watchlist view and ranking. **All markets** returns to the market browser when the watchlist is empty or its pairs remain unavailable without filters. These actions do not change saved watchlist entries.
+Empty watchlist views distinguish no followed pairs, filters with no matches and followed pairs unavailable in the current catalog. **Clear filters** resets search and quote currency to all pairs while retaining the watchlist view and ranking. **All markets** opens the catalog when the watchlist is empty or its pairs remain unavailable without filters. The catalog close button returns to the watchlist; Android Back closes an open options panel before closing the catalog.
 
 - Prices refresh every 60 seconds while the authenticated app is active, including from other main tabs.
 - Backgrounding pauses polling and cancels the current request. Foreground resume requests a fresh snapshot.
 - Requests have a 15-second deadline. Failed refreshes retain the last snapshot; data becomes stale after two minutes.
 - HTTP 429/418 responses establish a provider retry window.
-- Manual refresh and pull-to-refresh are available. Automatic updates do not activate the pull-to-refresh indicator.
+- Pull-to-refresh requests a manual price update in either list. A failed request also offers Retry. Automatic updates do not activate the pull-to-refresh indicator.
 
 Markets offers **24h**, **Last update** and **Both** change views. The initial selection is 24h. Its percentage comes from Binance's rolling summary. Last update compares consecutive accepted prices no more than two minutes apart and shows the comparison interval. The first observation, including after foreground resume, establishes a new reference and displays **Waiting**. Neither percentage is the reference used for price alerts.
 
@@ -172,7 +176,7 @@ Paused, stale or failed market data does not produce a fresh calculation. A matc
 | `app/(tabs)/` | Markets, Signals, Alerts and Profile routes. |
 | `src/components/` | Shared forms, controls, market rows and expandable signal views. |
 | `src/context/` | Session, profile, theme, shared market snapshots and notifications. |
-| `src/hooks/` | Screen access and signal/activity lifecycles. |
+| `src/hooks/` | Screen access, market-list filters and ranking, and signal/activity lifecycles. |
 | `src/api/signalApi.ts` | Pure SMA crossover calculation. |
 | `src/services/` | API requests, calculations, local storage and notification delivery. |
 | `src/lib/` | Supabase client, session storage and theme definitions. |
@@ -187,11 +191,22 @@ npx expo install --check
 npx expo-doctor
 ```
 
-The iPhone 17 Pro workflow has been checked for persisted sessions and appearance, loading real followed pairs, expandable signal details, watchlist navigation, activity persistence and price-alert history. Controlled regression checks have exercised cancellation, partial failures/timeouts, rate limits, cache migration, account isolation and duplicate-notification prevention.
+The current market-list implementation also passes iOS Hermes and static-web exports:
+
+```bash
+npx expo export --platform ios --output-dir dist/ios --max-workers 2
+npx expo export --platform web --output-dir dist/web --max-workers 2
+```
+
+The generated `dist/` output is ignored by Git. These checks validate JavaScript and asset bundling; device interaction and installation checks are listed separately below.
+
+The iPhone 17 Pro workflow has been checked for persisted sessions and appearance, loading real followed pairs, expandable signal details, watchlist navigation, activity persistence and price-alert history. The full-screen catalog, its options panel and all three change periods have been visually reviewed, including light and dark appearance. Catalog search was checked with the software keyboard, including its Search key dismissing the keyboard. Manual review also confirmed swipe scrolling and retaining the position after closing and reopening the catalog. Increasing system text size while the catalog is open now remeasures its content, keeping filter labels and explanatory text readable without reopening it. Controlled regression checks have exercised cancellation, partial failures/timeouts, rate limits, cache migration, account isolation and duplicate-notification prevention.
+
+Market-list regression checks cover independent view filters, captured rankings with live prices, catalog reopen state, options-first Back handling, empty/error states, rapid follow guards, row layouts across all three periods and four text scales, and scroll-position conversion when row height changes. They also check that system text-size changes remount the content without replacing its filter model or losing the saved row position. Full manual catalog checks in web and on Android, plus the native pull-to-refresh gesture, remain pending.
 
 These checks do not establish end-to-end RLS isolation, Android behavior, production readiness or guaranteed OS banner delivery. There is no committed `npm test` suite.
 
-A manual walkthrough is to sign in, open Markets, follow a pair, inspect Signals and its details, review Alerts, and open Profile's activity and Manage watchlist link. Use a demo account for changes to account data; an alert is not expected on every refresh.
+A manual walkthrough is to sign in, open Markets, open All markets, follow a pair and close the catalog to see it in the watchlist. Set different filters in each view, reopen the catalog and check that its selections and position are retained. Inspect Signals and its details, review Alerts, and open Profile's activity and Manage watchlist link. Use a demo account for changes to account data; an alert is not expected on every refresh.
 
 ## Limits and troubleshooting
 

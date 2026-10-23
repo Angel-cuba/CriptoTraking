@@ -20,8 +20,8 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  View,
   useWindowDimensions,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -38,17 +38,26 @@ export type MarketListData = {
   toggle: (symbol: string) => Promise<void>;
 };
 
-export function MarketList({
-  data,
-  model,
-  onOpenCatalog,
-  onCloseCatalog,
-}: {
+type MarketListProps = {
   data: MarketListData;
   model: MarketListModel;
   onOpenCatalog?: () => void;
   onCloseCatalog?: () => void;
-}) {
+};
+
+export function MarketList(props: MarketListProps) {
+  const { fontScale } = useWindowDimensions();
+  // Remeasure native text after a system text-size change; the model retains filters and scroll.
+  return <MarketListContent key={fontScale} {...props} fontScale={fontScale} />;
+}
+
+function MarketListContent({
+  data,
+  model,
+  onOpenCatalog,
+  onCloseCatalog,
+  fontScale,
+}: MarketListProps & { fontScale: number }) {
   const { colors: accountColors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -84,7 +93,6 @@ export function MarketList({
     watchlistOnly,
     restorePosition,
   } = model;
-  const { fontScale } = useWindowDimensions();
   const rowHeight = getMarketRowHeight(!watchlistOnly, changeView, fontScale);
   const [pullRefreshing, setPullRefreshing] = useState(false);
   const restoringPosition = useRef(true);
@@ -96,10 +104,21 @@ export function MarketList({
       watched,
       watchlistDisabled,
     }),
-    [changeView, rowHeight, movements, stale, paused, watched, watchlistDisabled],
+    [
+      changeView,
+      rowHeight,
+      movements,
+      stale,
+      paused,
+      watched,
+      watchlistDisabled,
+    ],
   );
   const refreshUnavailable = loading || paused || retryAt !== null;
-  useLayoutEffect(() => restorePosition(rowHeight), [restorePosition, rowHeight]);
+  useLayoutEffect(
+    () => restorePosition(rowHeight),
+    [restorePosition, rowHeight],
+  );
 
   function openMenu(value: NonNullable<typeof menu>) {
     Keyboard.dismiss();
@@ -259,9 +278,7 @@ export function MarketList({
                   tintColor={accountColors.text}
                   size={18}
                 />
-                <Text style={styles.filterLabel}>
-                  {sorting.label}
-                </Text>
+                <Text style={styles.filterLabel}>{sorting.label}</Text>
               </Pressable>
               <Pressable
                 onPress={() => openMenu("change")}
