@@ -67,7 +67,19 @@ NODE_OPTIONS=--dns-result-order=ipv4first npm start -- --web --localhost --port 
 
 Open `exp://localhost:8094` in the simulator's Expo Go client. The browser is available at `http://localhost:8094`. Use another free port when necessary.
 
-The IPv4 setting keeps the localhost server reachable through the address advertised to the simulator. Android and standalone development/production builds require separate verification. Native notification support depends on the client and OS permissions.
+The IPv4 setting keeps the localhost server reachable through the address advertised to the simulator. Native notification support depends on the client and OS permissions.
+
+For Android, configure [Android Studio and the emulator](https://docs.expo.dev/workflow/android-studio-emulator/), JDK 17, Android SDK Platform 36 and SDK platform-tools. Set `JAVA_HOME` and `ANDROID_HOME` for your installation. The reviewed device is a **Pixel 8 / Android 14 (API 34)** virtual device named `Pixel_8`; the emulator OS is separate from the SDK used to compile the app. Start that device and run:
+
+```bash
+npm run android -- --device Pixel_8 --port 8094
+```
+
+Expo generates the ignored `android/` directory, compiles the native modules and installs Kripto on the emulator. The first build downloads the required build tools. Expo Go 57 on Android fails at startup when this notification package imports the missing `ExpoTopicSubscriptionModule`; the app's own debug build includes that module. This does not require disabling notifications or changing their behavior.
+
+Use one Metro server per port. With the server running, use `s` to select the development build before opening Android with `a`, or Expo Go before opening iOS with `i`. Switching the launch target does not disconnect an already running app.
+
+Expo Router 57.0.28 can report an [initial-link state update before mounting on Android](https://github.com/expo/expo/issues/49378). Kripto uses the unmodified package. This intermittent development warning remains a known dependency limitation; it is not suppressed.
 
 ## Accounts and persistence
 
@@ -191,20 +203,23 @@ npx expo install --check
 npx expo-doctor
 ```
 
-The current market-list implementation also passes iOS Hermes and static-web exports:
+The current market-list implementation also passes iOS/Android Hermes and static-web exports:
 
 ```bash
 npx expo export --platform ios --output-dir dist/ios --max-workers 2
+npx expo export --platform android --output-dir dist/android --max-workers 2
 npx expo export --platform web --output-dir dist/web --max-workers 2
 ```
 
-The generated `dist/` output is ignored by Git. These checks validate JavaScript and asset bundling; device interaction and installation checks are listed separately below.
+The generated `dist/` output is ignored by Git. These checks validate JavaScript and asset bundling; device interaction and installation checks are listed separately below. A local Android debug build also compiled successfully and was installed on the Pixel 8 emulator; its generated native files remain ignored. Manual review on the Pixel 8 confirmed that the app opens and navigates through Markets and All markets with the unmodified Expo Router package.
 
 The iPhone 17 Pro workflow has been checked for persisted sessions and appearance, loading real followed pairs, expandable signal details, watchlist navigation, activity persistence and price-alert history. The full-screen catalog, its options panel and all three change periods have been visually reviewed, including light and dark appearance. Catalog search was checked with the software keyboard, including its Search key dismissing the keyboard. Manual review also confirmed swipe scrolling and retaining the position after closing and reopening the catalog. Increasing system text size while the catalog is open now remeasures its content, keeping filter labels and explanatory text readable without reopening it. Controlled regression checks have exercised cancellation, partial failures/timeouts, rate limits, cache migration, account isolation and duplicate-notification prevention.
 
-Market-list regression checks cover independent view filters, captured rankings with live prices, catalog reopen state, options-first Back handling, empty/error states, rapid follow guards, row layouts across all three periods and four text scales, and scroll-position conversion when row height changes. They also check that system text-size changes remount the content without replacing its filter model or losing the saved row position. Full manual catalog checks in web and on Android, plus the native pull-to-refresh gesture, remain pending.
+The authenticated web catalog has been checked for scrolling and position restoration, normalized pair search, quote filters, ranking, all three change periods, empty-search recovery and independent watchlist filters. Escape closes the options panel before closing the catalog. The reviewed mobile-width viewport had no horizontal page overflow. Manual iPhone review confirmed that pull-to-refresh shows an indicator, completes and leaves both lists usable.
 
-These checks do not establish end-to-end RLS isolation, Android behavior, production readiness or guaranteed OS banner delivery. There is no committed `npm test` suite.
+Market-list regression checks cover independent view filters, captured rankings with live prices, catalog reopen state, options-first Back handling, empty/error states, rapid follow guards, row layouts across all three periods and four text scales, and scroll-position conversion when row height changes. They also check that system text-size changes remount the content without replacing its filter model or losing the saved row position. Refresh checks cover the manual indicator lifecycle, no indicator for automatic or other-view refreshes, pause/loading/rate-limit guards and cleanup after a rejected reload. The remaining Android interaction checks include Back handling, search with the software keyboard and pull-to-refresh in both market lists.
+
+These checks do not establish end-to-end RLS isolation, full Android interaction coverage, production readiness or guaranteed OS banner delivery. There is no committed `npm test` suite.
 
 A manual walkthrough is to sign in, open Markets, open All markets, follow a pair and close the catalog to see it in the watchlist. Set different filters in each view, reopen the catalog and check that its selections and position are retained. Inspect Signals and its details, review Alerts, and open Profile's activity and Manage watchlist link. Use a demo account for changes to account data; an alert is not expected on every refresh.
 
