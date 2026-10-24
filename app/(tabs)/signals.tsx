@@ -1,6 +1,5 @@
 import { Feedback } from "@/src/components/AccountScreen";
 import { ActionButton } from "@/src/components/ActionButton";
-import { BrandArtwork } from "@/src/components/Branding";
 import { MarketSuggestions } from "@/src/components/MarketSuggestions";
 import { SignalCard } from "@/src/components/SignalCard";
 import { useSignalNotifications } from "@/src/context/SignalNotificationContext";
@@ -51,13 +50,10 @@ function SignalsContent({ userId }: { userId: string }) {
     () => [...new Set(profile?.watchlist ?? [])].sort(),
     [profile?.watchlist],
   );
-  const available = profile
-    ? symbols.length === 0
-      ? []
-      : market.snapshot
-        ? symbols.filter((symbol) => assets.has(symbol))
-        : null
-    : null;
+  const available =
+    !profile || (symbols.length > 0 && !market.snapshot)
+      ? null
+      : symbols.filter((symbol) => assets.has(symbol));
   const {
     signals,
     freshSymbols,
@@ -163,61 +159,61 @@ function SignalsContent({ userId }: { userId: string }) {
         initialNumToRender={8}
         ListHeaderComponent={
           <View style={styles.header}>
-            <View style={styles.brandHeading}>
-              <BrandArtwork subtle />
-              <Text style={styles.eyebrow}>YOUR WATCHLIST</Text>
-              <Text accessibilityRole="header" style={styles.title}>
-                Signals
-              </Text>
-              <Text style={styles.body}>
-                SMA5 / SMA10 crossovers from closed hourly candles.
-              </Text>
+            <View style={styles.headingRow}>
+              <View style={styles.headingCopy}>
+                <Text accessibilityRole="header" style={styles.title}>
+                  Signals
+                </Text>
+                <Text style={styles.body}>
+                  {profile
+                    ? `${symbols.length} followed ${symbols.length === 1 ? "pair" : "pairs"}`
+                    : profileLoading
+                      ? "Loading watchlist…"
+                      : "Watchlist unavailable"}
+                </Text>
+              </View>
+              <ActionButton
+                title="Refresh"
+                accessibilityLabel="Refresh signals"
+                secondary
+                loading={loading}
+                disabled={refreshDisabled}
+                onPress={refresh}
+              />
             </View>
-            <ActionButton
-              title="Refresh signals"
-              loading={loading}
-              disabled={refreshDisabled}
-              onPress={refresh}
-            />
-            {profileError ? (
-              <>
-                <Feedback message={profileError} />
-                <ActionButton
-                  title="Retry watchlist"
-                  secondary
-                  disabled={profileLoading || saving}
-                  onPress={() => void reloadProfile()}
-                />
-              </>
-            ) : null}
-            {market.error ? (
-              <>
-                <Feedback message={market.error} />
-                <ActionButton
-                  title="Retry market data"
-                  secondary
-                  disabled={
-                    market.loading || market.paused || market.retryAt !== null
-                  }
-                  onPress={market.reload}
-                />
-              </>
-            ) : null}
-            {cacheError ? <Feedback message={cacheError} /> : null}
-            {notificationError ? (
-              <Feedback message={notificationError} />
-            ) : null}
-            {error ? (
-              <>
-                <Feedback message={error} />
-                <ActionButton
-                  title="Retry signals"
-                  secondary
-                  disabled={loading || refreshDisabled}
-                  onPress={refresh}
-                />
-              </>
-            ) : null}
+            <Text style={styles.body}>
+              SMA5 / SMA10 · Closed 1h candles · Binance spot
+            </Text>
+            {[
+              {
+                message: profileError,
+                title: "Retry watchlist",
+                disabled: profileLoading || saving,
+                onPress: () => void reloadProfile(),
+              },
+              {
+                message: market.error,
+                title: "Retry market data",
+                disabled:
+                  market.loading || market.paused || market.retryAt !== null,
+                onPress: market.reload,
+              },
+              {
+                message: error,
+                title: "Retry signals",
+                disabled: loading || refreshDisabled,
+                onPress: refresh,
+              },
+            ].map(({ message, ...action }) =>
+              message ? (
+                <View key={action.title} style={styles.issue}>
+                  <Feedback message={message} />
+                  <ActionButton secondary {...action} />
+                </View>
+              ) : null,
+            )}
+            <Feedback message={cacheError} />
+            <Feedback message={notificationError} />
             {market.paused || market.stale ? (
               <Text style={styles.body}>
                 {market.paused
@@ -233,12 +229,6 @@ function SignalsContent({ userId }: { userId: string }) {
                   !profile ? "Loading watchlist" : "Loading market catalog"
                 }
               />
-            ) : null}
-            {symbols.length ? (
-              <Text style={styles.count}>
-                {symbols.length} followed{" "}
-                {symbols.length === 1 ? "pair" : "pairs"}
-              </Text>
             ) : null}
           </View>
         }
@@ -291,9 +281,6 @@ function SignalsContent({ userId }: { userId: string }) {
             >
               Manage watchlist in Markets
             </Link>
-            <Text style={styles.body}>
-              Binance spot · 1h · Technical readings from your followed pairs.
-            </Text>
           </View>
         }
       />
@@ -305,22 +292,22 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     content: { width: "100%", maxWidth: 688, alignSelf: "center" },
-    header: { padding: 20, paddingTop: 28, gap: 16 },
-    brandHeading: { gap: 12, overflow: "hidden" },
-    eyebrow: {
-      color: colors.primary,
-      fontSize: 12,
-      letterSpacing: 1.8,
+    header: { padding: 20, paddingTop: 24, gap: 12 },
+    headingRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: 12,
+    },
+    headingCopy: { flex: 1, minWidth: 120, gap: 2 },
+    title: {
+      color: colors.text,
+      fontSize: 26,
+      lineHeight: 34,
       fontWeight: "700",
     },
-    title: { color: colors.text, fontSize: 30, fontWeight: "700" },
-    body: { color: colors.muted, fontSize: 14, lineHeight: 21 },
-    count: {
-      color: colors.text,
-      fontSize: 15,
-      fontWeight: "600",
-      paddingTop: 8,
-    },
+    body: { color: colors.muted, fontSize: 13, lineHeight: 19 },
+    issue: { gap: 8 },
     empty: { color: colors.muted, fontSize: 14, lineHeight: 21, padding: 20 },
     footer: { padding: 20, gap: 14 },
     link: {
