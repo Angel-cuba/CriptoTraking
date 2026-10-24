@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
 
 export function ActionButton({
   title,
+  accessibilityLabel = title,
   onPress,
   loading = false,
   disabled = false,
@@ -12,6 +13,7 @@ export function ActionButton({
   danger = false,
 }: {
   title: string;
+  accessibilityLabel?: string;
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
@@ -42,7 +44,7 @@ export function ActionButton({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={title}
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: unavailable, busy: loading }}
       disabled={unavailable}
       onPress={onPress}
