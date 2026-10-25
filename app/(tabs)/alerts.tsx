@@ -15,8 +15,10 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
+import { Feedback } from "@/src/components/AccountScreen";
+import { ActionButton } from "@/src/components/ActionButton";
 import { AppSwitch } from "@/src/components/AppSwitch";
-import { BrandArtwork } from "@/src/components/Branding";
+import { SettingsRow } from "@/src/components/SettingsRow";
 import { PriceAlertRow } from "@/src/components/PriceAlertRow";
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
 import { useMarketCatalog } from "@/src/hooks/useMarketCatalog";
@@ -29,11 +31,14 @@ import {
 } from "@/src/lib/theme";
 import { DEFAULT_PRICE_ALERT_SETTINGS } from "@/src/services/price/priceAlertService";
 
+const ALERT_PAGE_SIZE = 10;
+
 const FILTERS = [
   { value: "all", label: "All" },
   { value: "up", label: "Up" },
   { value: "down", label: "Down" },
 ] as const;
+type AlertFilter = (typeof FILTERS)[number]["value"];
 
 export default function AlertsScreen() {
   const { colors } = useAppTheme();
@@ -64,15 +69,15 @@ export default function AlertsScreen() {
     error: profileError,
     reloadProfile,
   } = useProfile();
-  const [filter, setFilter] =
-    useState<(typeof FILTERS)[number]["value"]>("all");
+  const [filter, setFilter] = useState<AlertFilter>("all");
+  const [visibleCount, setVisibleCount] = useState(ALERT_PAGE_SIZE);
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const assets = useMemo(
     () =>
       new Map(market.snapshot?.assets.map((asset) => [asset.symbol, asset])),
     [market.snapshot],
   );
-  const visibleEvents = useMemo(
+  const filteredEvents = useMemo(
     () =>
       events
         .filter((event) => filter === "all" || event.direction === filter)
@@ -81,6 +86,16 @@ export default function AlertsScreen() {
         ),
     [events, filter],
   );
+  const visibleEvents = filteredEvents.slice(0, visibleCount);
+  const nextCount = Math.min(
+    ALERT_PAGE_SIZE,
+    filteredEvents.length - visibleEvents.length,
+  );
+
+  function selectFilter(next: AlertFilter) {
+    setFilter(next);
+    setVisibleCount(ALERT_PAGE_SIZE);
+  }
 
   let status = "Price data current";
   if (error) status = "Alert storage unavailable";
@@ -210,41 +225,9 @@ export default function AlertsScreen() {
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <View style={styles.content}>
         <View style={styles.header}>
-          <BrandArtwork subtle />
-          <Text style={styles.brand}>KRIPTO</Text>
           <Text style={styles.title} accessibilityRole="header">
             Alerts
           </Text>
-          <Text style={styles.subtitle}>Your price movement history.</Text>
-        </View>
-        <View
-          style={styles.filters}
-          accessibilityRole="radiogroup"
-          accessibilityLabel="Alert direction"
-        >
-          {FILTERS.map((option) => (
-            <Pressable
-              key={option.value}
-              onPress={() => setFilter(option.value)}
-              accessibilityRole="radio"
-              accessibilityLabel={`${option.label} alerts`}
-              accessibilityState={{ checked: filter === option.value }}
-              aria-checked={filter === option.value}
-              style={[
-                styles.filter,
-                filter === option.value && styles.selectedFilter,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.filterLabel,
-                  filter === option.value && styles.selectedFilterLabel,
-                ]}
-              >
-                {option.label}
-              </Text>
-            </Pressable>
-          ))}
         </View>
         <FlatList
           style={styles.list}
@@ -257,17 +240,11 @@ export default function AlertsScreen() {
           initialNumToRender={8}
           ListHeaderComponent={
             <View style={styles.listHeader}>
-              <View style={styles.monitoringCard}>
-                <View style={styles.monitoringHeader}>
-                  <View style={styles.monitoringCopy}>
-                    <Text style={styles.status}>Watchlist alerts</Text>
-                    <Text
-                      style={styles.caption}
-                      accessibilityLiveRegion="polite"
-                    >
-                      {preferenceStatus}
-                    </Text>
-                  </View>
+              <View style={styles.preferences}>
+                <SettingsRow
+                  title="Watchlist alerts"
+                  description={preferenceStatus}
+                >
                   {savingPreference ? (
                     <ActivityIndicator
                       color={colors.primary}
@@ -281,31 +258,17 @@ export default function AlertsScreen() {
                     accessibilityLabel="Watchlist price alerts"
                     accessibilityHint="Monitor your followed pairs while Kripto is active. Pausing keeps your history."
                   />
-                </View>
-                <View style={styles.rules}>
-                  <Text style={styles.rule}>
-                    Threshold ±{DEFAULT_PRICE_ALERT_SETTINGS.thresholdPercent}%
-                  </Text>
-                  <Text style={styles.rule}>
-                    {DEFAULT_PRICE_ALERT_SETTINGS.cooldownMs / 60_000} min
-                    between alerts per pair
-                  </Text>
-                </View>
+                </SettingsRow>
                 <Text style={styles.caption}>
-                  Checks run while Kripto is active. Pausing keeps your history.
+                  Threshold ±{DEFAULT_PRICE_ALERT_SETTINGS.thresholdPercent}% ·{" "}
+                  {DEFAULT_PRICE_ALERT_SETTINGS.cooldownMs / 60_000} min between
+                  alerts per pair
                 </Text>
-              </View>
-              <View style={styles.monitoringCard}>
-                <View style={styles.monitoringHeader}>
-                  <View style={styles.monitoringCopy}>
-                    <Text style={styles.status}>Price notifications</Text>
-                    <Text
-                      style={styles.caption}
-                      accessibilityLiveRegion="polite"
-                    >
-                      {notificationStatus}
-                    </Text>
-                  </View>
+                <View style={styles.divider} />
+                <SettingsRow
+                  title="Price notifications"
+                  description={notificationStatus}
+                >
                   {notificationBusy ? (
                     <ActivityIndicator
                       color={colors.primary}
@@ -319,32 +282,21 @@ export default function AlertsScreen() {
                     accessibilityLabel="Price alert notifications"
                     accessibilityHint="Allow local notifications for new price alerts on this device."
                   />
-                </View>
-                {notificationSupported ? (
-                  <Text style={styles.caption}>
-                    Only new alerts are notified while Kripto is active. Your
-                    history is never replayed.
-                  </Text>
-                ) : null}
+                </SettingsRow>
+                <Text style={styles.caption}>
+                  Checks run while Kripto is active. Pausing keeps your history.
+                  {notificationSupported
+                    ? " Only new alerts are notified; history is never replayed."
+                    : ""}
+                </Text>
                 {notificationSupported &&
                 (permission === "denied" || permission === "provisional") ? (
-                  <Pressable
-                    onPress={openSystemSettings}
-                    style={styles.settings}
-                    accessibilityRole="button"
+                  <ActionButton
+                    title="System settings"
                     accessibilityLabel="Open notification system settings"
-                  >
-                    <SymbolView
-                      name={{
-                        ios: "gearshape",
-                        android: "settings",
-                        web: "settings",
-                      }}
-                      tintColor={colors.primary}
-                      size={17}
-                    />
-                    <Text style={styles.retryLabel}>System settings</Text>
-                  </Pressable>
+                    secondary
+                    onPress={openSystemSettings}
+                  />
                 ) : null}
               </View>
               <View style={styles.summary}>
@@ -366,53 +318,67 @@ export default function AlertsScreen() {
                     )}
                   </Text>
                 ) : null}
-                <Text style={styles.caption}>
-                  {visibleEvents.length}
-                  {filter !== "all" ? ` of ${events.length}` : ""}{" "}
-                  {events.length === 1 ? "alert" : "alerts"} on this device
-                </Text>
               </View>
               {failures
                 .filter((failure) => failure.message && !failure.hidden)
                 .map((failure) => (
-                  <View
-                    key={failure.key}
-                    style={styles.error}
-                    accessibilityRole="alert"
-                  >
-                    <Text style={styles.errorText}>{failure.message}</Text>
-                    <Pressable
+                  <View key={failure.key} style={styles.issue}>
+                    <Feedback message={failure.message} />
+                    <ActionButton
+                      title={failure.label}
+                      secondary
                       onPress={failure.retry}
                       disabled={failure.disabled}
-                      accessibilityRole="button"
-                      accessibilityLabel={failure.label}
-                      accessibilityState={{ disabled: failure.disabled }}
-                      style={styles.retry}
-                    >
-                      <SymbolView
-                        name={{
-                          ios: "arrow.clockwise",
-                          android: "refresh",
-                          web: "refresh",
-                        }}
-                        tintColor={
-                          failure.disabled ? colors.muted : colors.primary
-                        }
-                        size={17}
-                      />
-                      <Text
-                        style={[
-                          styles.retryLabel,
-                          failure.disabled && styles.disabledLabel,
-                        ]}
-                      >
-                        {failure.key === "notifications"
-                          ? "Check status"
-                          : "Retry"}
-                      </Text>
-                    </Pressable>
+                    />
                   </View>
                 ))}
+              <View style={styles.historyHeading}>
+                <Text style={styles.status} accessibilityRole="header">
+                  Latest alerts
+                </Text>
+                <Text style={styles.caption}>
+                  {visibleEvents.length}
+                  {visibleEvents.length < filteredEvents.length
+                    ? ` of ${filteredEvents.length}`
+                    : ""}{" "}
+                  {filter === "all"
+                    ? ""
+                    : filter === "up"
+                      ? "upward "
+                      : "downward "}
+                  {filteredEvents.length === 1 ? "alert" : "alerts"} on this
+                  device
+                </Text>
+              </View>
+              <View
+                style={styles.filters}
+                accessibilityRole="radiogroup"
+                accessibilityLabel="Alert direction"
+              >
+                {FILTERS.map((option) => (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => selectFilter(option.value)}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`${option.label} alerts`}
+                    accessibilityState={{ checked: filter === option.value }}
+                    aria-checked={filter === option.value}
+                    style={[
+                      styles.filter,
+                      filter === option.value && styles.selectedFilter,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.filterLabel,
+                        filter === option.value && styles.selectedFilterLabel,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
           }
           ListEmptyComponent={
@@ -438,14 +404,11 @@ export default function AlertsScreen() {
                   </View>
                   <Text style={styles.emptyTitle}>{emptyTitle}</Text>
                   {events.length > 0 && filter !== "all" ? (
-                    <Pressable
-                      onPress={() => setFilter("all")}
-                      style={styles.retry}
-                      accessibilityRole="button"
-                      accessibilityLabel="Show all alerts"
-                    >
-                      <Text style={styles.retryLabel}>Show all alerts</Text>
-                    </Pressable>
+                    <ActionButton
+                      title="Show all alerts"
+                      secondary
+                      onPress={() => selectFilter("all")}
+                    />
                   ) : profile?.watchlist.length === 0 ? (
                     <Link href="/markets" style={styles.marketLink}>
                       Browse markets
@@ -461,6 +424,22 @@ export default function AlertsScreen() {
               )}
             </View>
           }
+          ListFooterComponent={
+            nextCount > 0 ? (
+              <View style={styles.footer}>
+                <ActionButton
+                  title={`Show ${nextCount} more`}
+                  accessibilityLabel={`Show ${nextCount} more alerts`}
+                  secondary
+                  onPress={() =>
+                    setVisibleCount((count) =>
+                      Math.min(count + ALERT_PAGE_SIZE, filteredEvents.length),
+                    )
+                  }
+                />
+              </View>
+            ) : null
+          }
           contentContainerStyle={[
             styles.listContent,
             { paddingBottom: getTabContentPadding(insets.bottom) },
@@ -475,25 +454,16 @@ const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     content: { flex: 1, width: "100%", maxWidth: 688, alignSelf: "center" },
-    header: {
-      paddingHorizontal: 20,
-      paddingTop: 28,
-      paddingBottom: 20,
-      gap: 7,
-    },
-    brand: {
-      fontSize: 12,
+    header: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 14 },
+    title: {
+      fontSize: 26,
+      lineHeight: 34,
       fontWeight: "700",
-      letterSpacing: 1.8,
-      color: colors.primary,
+      color: colors.text,
     },
-    title: { fontSize: 30, fontWeight: "700", color: colors.text },
-    subtitle: { fontSize: 14, lineHeight: 21, color: colors.muted },
     caption: { fontSize: 12, lineHeight: 18, color: colors.muted },
     filters: {
       flexDirection: "row",
-      marginHorizontal: 20,
-      marginBottom: 18,
       borderRadius: 18,
       padding: 4,
       gap: 4,
@@ -513,71 +483,42 @@ const createStyles = (colors: ThemeColors) =>
     selectedFilterLabel: { color: colors.primary },
     list: { flex: 1 },
     listContent: { flexGrow: 1 },
+    footer: { paddingHorizontal: 20, paddingTop: 6 },
     listHeader: { paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
-    monitoringCard: {
-      padding: 18,
-      gap: 12,
-      borderRadius: CORNER_RADIUS.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-    },
-    monitoringHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
-    monitoringCopy: { flex: 1, gap: 5 },
-    settings: {
-      minHeight: 44,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 7,
-      alignSelf: "flex-start",
-    },
-    rules: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-    rule: {
-      fontSize: 12,
-      lineHeight: 18,
-      color: colors.primary,
-      backgroundColor: colors.primarySoft,
-      borderRadius: 10,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-    },
-    summary: {
-      padding: 18,
-      gap: 6,
-      borderRadius: CORNER_RADIUS.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-    },
-    status: { fontSize: 15, fontWeight: "600", color: colors.text },
-    error: {
-      padding: 16,
-      borderRadius: 16,
-      backgroundColor: colors.dangerSoft,
+    preferences: {
+      padding: 14,
       gap: 4,
+      borderRadius: CORNER_RADIUS.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
     },
-    errorText: { fontSize: 13, lineHeight: 19, color: colors.danger },
-    retry: {
-      minHeight: 44,
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+      marginTop: 10,
+    },
+    summary: { gap: 4 },
+    historyHeading: {
       flexDirection: "row",
+      flexWrap: "wrap",
       alignItems: "center",
+      justifyContent: "space-between",
       gap: 6,
-      alignSelf: "center",
-      paddingHorizontal: 8,
     },
-    retryLabel: { fontSize: 14, fontWeight: "600", color: colors.primary },
-    disabledLabel: { color: colors.muted },
+    issue: { gap: 8 },
+    status: { fontSize: 15, fontWeight: "600", color: colors.text },
     empty: {
       flexGrow: 1,
-      minHeight: 240,
+      minHeight: 160,
       alignItems: "center",
       justifyContent: "center",
-      padding: 24,
+      padding: 20,
       gap: 12,
     },
     emptyIcon: {
-      width: 64,
-      height: 64,
+      width: 48,
+      height: 48,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: colors.elevated,

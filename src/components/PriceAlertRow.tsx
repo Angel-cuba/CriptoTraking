@@ -141,10 +141,10 @@ export function PriceAlertRow({
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    slot: { paddingHorizontal: 20, paddingBottom: 12 },
+    slot: { paddingHorizontal: 20, paddingBottom: 10 },
     card: {
-      padding: 18,
-      gap: 16,
+      padding: 14,
+      gap: 8,
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: CORNER_RADIUS.card,
@@ -192,13 +192,10 @@ const createStyles = (colors: ThemeColors) =>
     price: {
       flex: 1,
       minWidth: 0,
-      gap: 7,
-      padding: 12,
-      borderRadius: 14,
-      backgroundColor: colors.background,
+      gap: 3,
     },
     amount: {
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: "600",
       fontVariant: ["tabular-nums"],
       color: colors.text,
