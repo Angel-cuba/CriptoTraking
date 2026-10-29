@@ -10,11 +10,13 @@ export function MarketSuggestions({
   disabled,
   pendingSymbol,
   onFollow,
+  onOpenAsset,
 }: {
   assets: MarketAsset[];
   disabled: boolean;
   pendingSymbol: string | null;
   onFollow: (symbol: string) => void;
+  onOpenAsset?: (asset: MarketAsset) => void;
 }) {
   const styles = useAccountStyles();
   const suggestions = useMemo(() => getMarketSuggestions(assets), [assets]);
@@ -41,6 +43,7 @@ export function MarketSuggestions({
           watched={false}
           watchlistDisabled={disabled || pendingSymbol !== null}
           onToggleWatchlist={onFollow}
+          onOpenAsset={onOpenAsset}
         />
       ))}
     </View>

@@ -139,6 +139,12 @@ Price monitoring evaluates followed pairs independently of hourly signals:
 
 Monitoring is initially enabled; price notifications are initially disabled. Pausing alerts does not stop Markets from refreshing.
 
+## Asset analysis
+
+Tapping a row in My watchlist or All markets opens an analysis modal with up to 24 closed hourly candles, SMA5/SMA10 and base-asset volume from Binance. The last ticker price and rolling 24h statistics keep their own source time, separate from the latest closed candle and chart load time.
+
+Chart history loads when the detail opens, with a 10-second deadline and a one-minute in-memory cache bounded to 20 entries. Manual refresh bypasses the fresh cache; request failures retain previously loaded candles. Chart requests share the catalog's provider rate-limit window. Closing the detail cancels its request, and returning to All markets retains the catalog's filters and scroll position. Charts load as a separate web chunk when opened.
+
 ## Hourly signals and notifications
 
 Signals covers followed pairs present in the market catalog. Readings refresh when available after the screen mounts, when the watchlist changes, on manual refresh and on foreground resume. The market's 60-second polling timer does not recalculate hourly signals.
@@ -225,7 +231,7 @@ A manual walkthrough is to sign in, open Markets, open All markets, follow a pai
 
 ## Limits and troubleshooting
 
-There is no background worker, remote push service, trading execution, wallet integration or price-chart detail screen. Android and standalone builds, fresh-clone installation and two-account database isolation still need end-to-end verification. A mobile email-confirmation callback remains a separate feature.
+There is no background worker, remote push service, trading execution, wallet integration. Android and standalone builds, fresh-clone installation and two-account database isolation still need end-to-end verification. A mobile email-confirmation callback remains a separate feature.
 
 | Symptom | Check |
 | --- | --- |

@@ -39,6 +39,7 @@ export type MarketListData = {
 };
 
 type MarketListProps = {
+  onOpenAsset?: (asset: import("@/src/types/market").MarketAsset) => void;
   data: MarketListData;
   model: MarketListModel;
   onOpenCatalog?: () => void;
@@ -56,6 +57,7 @@ function MarketListContent({
   model,
   onOpenCatalog,
   onCloseCatalog,
+  onOpenAsset,
   fontScale,
 }: MarketListProps & { fontScale: number }) {
   const { colors: accountColors } = useAppTheme();
@@ -427,6 +429,7 @@ function MarketListContent({
                 watched={watched.has(item.symbol)}
                 watchlistDisabled={watchlistDisabled}
                 onToggleWatchlist={toggle}
+                onOpenAsset={onOpenAsset}
               />
             )}
             getItemLayout={(_data, index) => ({
@@ -468,6 +471,7 @@ function MarketListContent({
               !error ? (
                 <View>
                   <MarketSuggestions
+                    onOpenAsset={onOpenAsset}
                     assets={snapshot.assets}
                     pendingSymbol={pendingSymbol}
                     disabled={watchlistDisabled || stale || paused}

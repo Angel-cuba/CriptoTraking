@@ -1,3 +1,5 @@
+import { AssetDetailModal } from "@/src/components/AssetDetailPresentation";
+import type { MarketAsset } from "@/src/types/market";
 import { MarketCatalogModal } from "@/src/components/MarketCatalogModal";
 import { MarketList } from "@/src/components/MarketList";
 import { useAppTheme } from "@/src/context/ThemeContext";
@@ -15,6 +17,7 @@ export default function MarketsScreen() {
   const catalog = useMarketCatalog();
   const account = useProfile();
   const { profile, loading: profileLoading, saving, toggleWatchlist } = account;
+  const [selectedAsset, setSelectedAsset] = useState<MarketAsset | null>(null);
   const [catalogVisible, setCatalogVisible] = useState(false);
   const [pendingSymbol, setPendingSymbol] = useState<string | null>(null);
   const pendingFollow = useRef(false);
@@ -48,13 +51,21 @@ export default function MarketsScreen() {
   useFocusEffect(
     useCallback(() => {
       if (scope !== "watchlist") return;
+      setSelectedAsset(null);
       setCatalogVisible(false);
       resetFilters();
       router.setParams({ scope: undefined });
     }, [scope, resetFilters]),
   );
 
-  const data = { catalog, account, watched, watchlistDisabled, pendingSymbol, toggle };
+  const data = {
+    catalog,
+    account,
+    watched,
+    watchlistDisabled,
+    pendingSymbol,
+    toggle,
+  };
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -63,11 +74,20 @@ export default function MarketsScreen() {
       <MarketList
         data={data}
         model={model}
+        onOpenAsset={(asset) => {
+          Keyboard.dismiss();
+          model.setMenu(null);
+          setSelectedAsset(asset);
+        }}
         onOpenCatalog={() => {
           Keyboard.dismiss();
           model.setMenu(null);
           setCatalogVisible(true);
         }}
+      />
+      <AssetDetailModal
+        asset={selectedAsset}
+        onClose={() => setSelectedAsset(null)}
       />
       <MarketCatalogModal
         visible={catalogVisible}

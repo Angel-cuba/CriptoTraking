@@ -97,6 +97,7 @@ export const MarketRow = memo(function MarketRow({
   watched,
   watchlistDisabled,
   onToggleWatchlist,
+  onOpenAsset,
 }: {
   asset: MarketAsset;
   changeView?: MarketChangeView;
@@ -105,6 +106,7 @@ export const MarketRow = memo(function MarketRow({
   watched: boolean;
   watchlistDisabled: boolean;
   onToggleWatchlist: (symbol: string) => void;
+  onOpenAsset?: (asset: MarketAsset) => void;
 }) {
   const { colors: accountColors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
@@ -125,64 +127,77 @@ export const MarketRow = memo(function MarketRow({
       ]}
     >
       <View style={[styles.row, compact && styles.compactRow]}>
-        <AssetAvatar symbol={asset.baseAsset} size={compact ? 32 : 36} />
-        <View style={[styles.asset, compact && styles.compactContent]}>
-          <Text
-            style={[
-              styles.symbol,
-              asset.baseAsset.length > 8 && styles.longSymbol,
-            ]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
-          >
-            {asset.baseAsset}
-          </Text>
-          <Text style={styles.quote} numberOfLines={1}>
-            {asset.baseAsset}/{asset.quoteAsset}
-          </Text>
-          {changeView === "both" ? (
-            <ChangeValue
-              symbol={asset.symbol}
-              value={movement?.changePercent}
-              digits={4}
-              empty={ticker ? "Waiting" : "N/A"}
-              period={`Update${movement ? ` ${interval}` : ""}`}
-              label={`since the previous update${movement ? ` (${interval})` : ""}`}
-            />
-          ) : null}
-        </View>
-        <View style={[styles.price, compact && styles.compactContent]}>
-          <Text
-            style={styles.amount}
-            accessibilityLabel={`${asset.symbol}: ${ticker ? `${amount} ${asset.quoteAsset}` : "price unavailable"}`}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
-          >
-            {amount}
-          </Text>
-          {!compact ? (
-            <Text style={styles.quote}>{asset.quoteAsset}</Text>
-          ) : null}
-          {changeView === "update" ? (
-            <ChangeValue
-              symbol={asset.symbol}
-              value={movement?.changePercent}
-              digits={4}
-              empty={ticker ? "Waiting" : "N/A"}
-              period={movement ? interval : undefined}
-              label={`since the previous update${movement ? ` (${interval})` : ""}`}
-            />
-          ) : (
-            <ChangeValue
-              symbol={asset.symbol}
-              value={ticker?.changePercent24h}
-              period={changeView === "both" ? "24h" : undefined}
-              label="over 24 hours"
-            />
-          )}
-        </View>
+        <Pressable
+          style={styles.detailTarget}
+          disabled={!onOpenAsset}
+          accessible={!!onOpenAsset}
+          accessibilityRole={onOpenAsset ? "button" : undefined}
+          accessibilityLabel={
+            onOpenAsset
+              ? `View ${asset.baseAsset}/${asset.quoteAsset} analysis, ${amount} ${asset.quoteAsset}`
+              : undefined
+          }
+          onPress={() => onOpenAsset?.(asset)}
+        >
+          <AssetAvatar symbol={asset.baseAsset} size={compact ? 32 : 36} />
+          <View style={[styles.asset, compact && styles.compactContent]}>
+            <Text
+              style={[
+                styles.symbol,
+                asset.baseAsset.length > 8 && styles.longSymbol,
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
+              {asset.baseAsset}
+            </Text>
+            <Text style={styles.quote} numberOfLines={1}>
+              {asset.baseAsset}/{asset.quoteAsset}
+            </Text>
+            {changeView === "both" ? (
+              <ChangeValue
+                symbol={asset.symbol}
+                value={movement?.changePercent}
+                digits={4}
+                empty={ticker ? "Waiting" : "N/A"}
+                period={`Update${movement ? ` ${interval}` : ""}`}
+                label={`since the previous update${movement ? ` (${interval})` : ""}`}
+              />
+            ) : null}
+          </View>
+          <View style={[styles.price, compact && styles.compactContent]}>
+            <Text
+              style={styles.amount}
+              accessibilityLabel={`${asset.symbol}: ${ticker ? `${amount} ${asset.quoteAsset}` : "price unavailable"}`}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
+              {amount}
+            </Text>
+            {!compact ? (
+              <Text style={styles.quote}>{asset.quoteAsset}</Text>
+            ) : null}
+            {changeView === "update" ? (
+              <ChangeValue
+                symbol={asset.symbol}
+                value={movement?.changePercent}
+                digits={4}
+                empty={ticker ? "Waiting" : "N/A"}
+                period={movement ? interval : undefined}
+                label={`since the previous update${movement ? ` (${interval})` : ""}`}
+              />
+            ) : (
+              <ChangeValue
+                symbol={asset.symbol}
+                value={ticker?.changePercent24h}
+                period={changeView === "both" ? "24h" : undefined}
+                label="over 24 hours"
+              />
+            )}
+          </View>
+        </Pressable>
         <Pressable
           style={[
             styles.watchButton,
@@ -229,6 +244,13 @@ const createStyles = (accountColors: ThemeColors) =>
       borderColor: accountColors.border,
       borderRadius: CORNER_RADIUS.card,
       backgroundColor: accountColors.surface,
+    },
+    detailTarget: {
+      flex: 1,
+      alignSelf: "stretch",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
     },
     compactSlot: { paddingBottom: 0 },
     compactRow: {

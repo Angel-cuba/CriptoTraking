@@ -71,7 +71,7 @@ async function getMarketCatalog(signal?: AbortSignal): Promise<MarketSymbol[]> {
   return cachedCatalog;
 }
 
-async function fetchMarketData(
+export async function fetchMarketData(
   path: string,
   signal?: AbortSignal,
 ): Promise<unknown> {
