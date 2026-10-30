@@ -1,3 +1,9 @@
+import {
+  AssetDetailModal,
+  getDetailAsset,
+} from "@/src/components/AssetDetailPresentation";
+import type { AssetDetailSelection } from "@/src/types/assetDetail";
+import { useAuth } from "@/src/hooks/useAuth";
 import { Link } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useMemo, useState } from "react";
@@ -41,6 +47,11 @@ const FILTERS = [
 type AlertFilter = (typeof FILTERS)[number]["value"];
 
 export default function AlertsScreen() {
+  const { user } = useAuth();
+  return user ? <AlertsContent key={user.id} /> : null;
+}
+
+function AlertsContent() {
   const { colors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -69,6 +80,8 @@ export default function AlertsScreen() {
     error: profileError,
     reloadProfile,
   } = useProfile();
+  const [selectedDetail, setSelectedDetail] =
+    useState<AssetDetailSelection | null>(null);
   const [filter, setFilter] = useState<AlertFilter>("all");
   const [visibleCount, setVisibleCount] = useState(ALERT_PAGE_SIZE);
   const [settingsError, setSettingsError] = useState<string | null>(null);
@@ -235,7 +248,16 @@ export default function AlertsScreen() {
           extraData={colors}
           keyExtractor={(event) => event.id}
           renderItem={({ item }) => (
-            <PriceAlertRow event={item} asset={assets.get(item.symbol)} />
+            <PriceAlertRow
+              onOpen={() =>
+                setSelectedDetail({
+                  asset: getDetailAsset(item.symbol, assets.get(item.symbol)),
+                  context: { kind: "alert", event: item },
+                })
+              }
+              event={item}
+              asset={assets.get(item.symbol)}
+            />
           )}
           initialNumToRender={8}
           ListHeaderComponent={
@@ -446,6 +468,11 @@ export default function AlertsScreen() {
           ]}
         />
       </View>
+      <AssetDetailModal
+        asset={selectedDetail?.asset ?? null}
+        context={selectedDetail?.context}
+        onClose={() => setSelectedDetail(null)}
+      />
     </SafeAreaView>
   );
 }

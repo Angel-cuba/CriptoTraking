@@ -1,5 +1,5 @@
 import { SymbolView } from "expo-symbols";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AssetAvatar } from "@/src/components/AssetAvatar";
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
@@ -10,7 +10,7 @@ import type {
   PriceAlertNotificationStatus,
 } from "@/src/types/priceAlert";
 
-const DELIVERY_LABELS: Record<PriceAlertNotificationStatus, string> = {
+export const DELIVERY_LABELS: Record<PriceAlertNotificationStatus, string> = {
   pending: "Notification status unconfirmed",
   unknown: "Notification status unconfirmed",
   scheduled: "Notification scheduled",
@@ -29,9 +29,11 @@ function formatPrice(price: number) {
 export function PriceAlertRow({
   event,
   asset,
+  onOpen,
 }: {
   event: PriceAlertEvent;
   asset?: MarketSymbol;
+  onOpen: () => void;
 }) {
   const { colors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
@@ -42,7 +44,13 @@ export function PriceAlertRow({
 
   return (
     <View style={styles.slot}>
-      <View style={styles.card}>
+      <Pressable
+        style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]}
+        onPress={onOpen}
+        accessibilityRole="button"
+        accessibilityLabel={`View ${pair} alert details, ${change} since reference`}
+        accessibilityHint="Open the saved alert and its hourly chart."
+      >
         <View style={styles.topLine}>
           <View style={styles.asset}>
             <AssetAvatar symbol={asset?.baseAsset ?? event.symbol} size={32} />
@@ -134,7 +142,7 @@ export function PriceAlertRow({
             {DELIVERY_LABELS[event.notificationStatus]}
           </Text>
         ) : null}
-      </View>
+      </Pressable>
     </View>
   );
 }

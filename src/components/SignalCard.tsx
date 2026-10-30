@@ -18,10 +18,6 @@ const labels = {
   SELL: "Bearish crossover",
   NEUTRAL: "No new crossover",
 };
-const formatAverage = (value: number) =>
-  value < 0.0000001
-    ? value.toExponential(4)
-    : value.toLocaleString("en-US", { maximumSignificantDigits: 8 });
 
 export function SignalCard({
   symbol,
@@ -30,8 +26,7 @@ export function SignalCard({
   failure,
   loading,
   cached,
-  expanded,
-  onToggle,
+  onOpen,
 }: {
   symbol: string;
   asset?: MarketSymbol;
@@ -39,8 +34,7 @@ export function SignalCard({
   failure?: string;
   loading: boolean;
   cached: boolean;
-  expanded: boolean;
-  onToggle: () => void;
+  onOpen: () => void;
 }) {
   const { colors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
@@ -63,7 +57,6 @@ export function SignalCard({
     : loading
       ? "Checking…"
       : "Reading unavailable";
-  const showDetails = Boolean(expanded && signal);
   return (
     <View style={styles.card}>
       <Pressable
@@ -73,18 +66,16 @@ export function SignalCard({
           focused && styles.focused,
         ]}
         disabled={!signal}
-        onPress={onToggle}
+        onPress={onOpen}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         accessibilityRole="button"
         accessibilityLabel={`${pair}, ${signal ? signal.type + ", " : ""}${status}, details`}
-        accessibilityHint="Show or hide candle details and moving averages."
+        accessibilityHint="Open hourly analysis and the saved signal reading."
         accessibilityState={{
-          expanded: showDetails,
           disabled: !signal,
           busy: loading,
         }}
-        aria-expanded={showDetails}
       >
         <AssetAvatar symbol={asset?.baseAsset ?? symbol} size={32} />
         <View style={styles.identity}>
@@ -108,9 +99,9 @@ export function SignalCard({
         ) : signal ? (
           <SymbolView
             name={{
-              ios: showDetails ? "chevron.up" : "chevron.down",
-              android: showDetails ? "expand_less" : "expand_more",
-              web: showDetails ? "expand_less" : "expand_more",
+              ios: "chevron.right",
+              android: "chevron_right",
+              web: "chevron_right",
             }}
             tintColor={colors.muted}
             size={18}
@@ -129,35 +120,6 @@ export function SignalCard({
             ? new Date(signal.checkedAt).toLocaleString()
             : "Check time unavailable"}
         </Text>
-      ) : null}
-      {showDetails && signal ? (
-        <View style={styles.details}>
-          <Text style={styles.caption}>
-            Closed candle · {new Date(signal.timestamp).toLocaleString()}
-          </Text>
-          <Text style={styles.caption}>{signal.reason}</Text>
-          <View style={styles.averages}>
-            {[
-              { label: "SMA5", value: signal.sma5 },
-              { label: "SMA10", value: signal.sma10 },
-            ].map((average) => (
-              <View key={average.label} style={styles.metric}>
-                <Text style={styles.caption}>
-                  {average.label}
-                  {asset ? " · " + asset.quoteAsset : ""}
-                </Text>
-                <Text
-                  style={styles.value}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.7}
-                >
-                  {formatAverage(average.value)}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
       ) : null}
     </View>
   );
@@ -196,25 +158,4 @@ const createStyles = (colors: ThemeColors) =>
     },
     caption: { color: colors.muted, fontSize: 12, lineHeight: 18 },
     error: { color: colors.danger, fontSize: 12, lineHeight: 18 },
-    details: {
-      gap: 10,
-      paddingTop: 10,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-    },
-    averages: { flexDirection: "row", gap: 12 },
-    metric: {
-      flex: 1,
-      minWidth: 0,
-      gap: 8,
-      padding: 10,
-      borderRadius: 14,
-      backgroundColor: colors.background,
-    },
-    value: {
-      color: colors.text,
-      fontSize: 17,
-      fontWeight: "600",
-      fontVariant: ["tabular-nums"],
-    },
   });

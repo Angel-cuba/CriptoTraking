@@ -1,3 +1,8 @@
+import {
+  AssetDetailModal,
+  getDetailAsset,
+} from "@/src/components/AssetDetailPresentation";
+import type { AssetDetailSelection } from "@/src/types/assetDetail";
 import { Feedback } from "@/src/components/AccountScreen";
 import { ActionButton } from "@/src/components/ActionButton";
 import { MarketSuggestions } from "@/src/components/MarketSuggestions";
@@ -74,7 +79,8 @@ function SignalsContent({ userId }: { userId: string }) {
   } = useSignalNotifications();
   const focused = useRef(false);
   const [screenFocused, setScreenFocused] = useState(false);
-  const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
+  const [selectedDetail, setSelectedDetail] =
+    useState<AssetDetailSelection | null>(null);
   const [pendingSymbol, setPendingSymbol] = useState<string | null>(null);
   const following = useRef(false);
 
@@ -85,6 +91,7 @@ function SignalsContent({ userId }: { userId: string }) {
       return () => {
         focused.current = false;
         setScreenFocused(false);
+        setSelectedDetail(null);
       };
     }, []),
   );
@@ -244,12 +251,19 @@ function SignalsContent({ userId }: { userId: string }) {
             }
             loading={loading && assets.has(symbol)}
             cached={!freshSymbols.includes(symbol)}
-            expanded={expandedSymbol === symbol}
-            onToggle={() =>
-              setExpandedSymbol((previous) =>
-                previous === symbol ? null : symbol,
-              )
-            }
+            onOpen={() => {
+              const reading = readings.get(symbol);
+              if (!reading) return;
+              setSelectedDetail({
+                asset: getDetailAsset(symbol, assets.get(symbol)),
+                context: {
+                  kind: "signal",
+                  reading,
+                  cached: !freshSymbols.includes(symbol),
+                  failure: failures[symbol],
+                },
+              });
+            }}
           />
         )}
         ListEmptyComponent={
@@ -283,6 +297,11 @@ function SignalsContent({ userId }: { userId: string }) {
             </Link>
           </View>
         }
+      />
+      <AssetDetailModal
+        asset={selectedDetail?.asset ?? null}
+        context={selectedDetail?.context}
+        onClose={() => setSelectedDetail(null)}
       />
     </SafeAreaView>
   );

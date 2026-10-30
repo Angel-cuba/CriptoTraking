@@ -6,18 +6,20 @@ import {
 import { MarketRateLimitError } from "@/src/services/market/marketCatalogService";
 import { useEffect, useState } from "react";
 
-export function useAssetDetails(symbol: string) {
+export function useAssetDetails(symbol: string, asOf?: number) {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<{
     symbol: string;
+    asOf?: number;
     attempt: number;
     history?: AssetHistory;
     error: string | null;
     retryAt: number;
   }>(() => ({
     symbol,
+    asOf,
     attempt: -1,
-    history: getCachedAssetHistory(symbol),
+    history: getCachedAssetHistory(symbol, asOf),
     error: null,
     retryAt: 0,
   }));
@@ -27,11 +29,18 @@ export function useAssetDetails(symbol: string) {
     let current = true;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000);
-    void getAssetHistory(symbol, controller.signal, attempt > 0)
+    void getAssetHistory(symbol, controller.signal, attempt > 0, asOf)
       .then(
         (history) => {
           if (current)
-            setState({ symbol, attempt, history, error: null, retryAt: 0 });
+            setState({
+              symbol,
+              asOf,
+              attempt,
+              history,
+              error: null,
+              retryAt: 0,
+            });
         },
         (error: unknown) => {
           if (!current) return;
@@ -40,8 +49,9 @@ export function useAssetDetails(symbol: string) {
           setWaiting(retryAt > Date.now());
           setState({
             symbol,
+            asOf,
             attempt,
-            history: getCachedAssetHistory(symbol),
+            history: getCachedAssetHistory(symbol, asOf),
             retryAt,
             error: retryAt
               ? "Binance is limiting requests. Please wait before retrying."
@@ -55,7 +65,7 @@ export function useAssetDetails(symbol: string) {
       controller.abort();
       clearTimeout(timeout);
     };
-  }, [symbol, attempt]);
+  }, [symbol, asOf, attempt]);
 
   useEffect(() => {
     if (!state.retryAt) return;
@@ -66,10 +76,10 @@ export function useAssetDetails(symbol: string) {
     return () => clearTimeout(timer);
   }, [state.retryAt]);
 
-  const loading = state.symbol !== symbol || state.attempt !== attempt;
+  const sameWindow = state.symbol === symbol && state.asOf === asOf;
+  const loading = !sameWindow || state.attempt !== attempt;
   return {
-    history:
-      state.symbol === symbol ? state.history : getCachedAssetHistory(symbol),
+    history: sameWindow ? state.history : getCachedAssetHistory(symbol, asOf),
     loading,
     error: loading ? null : state.error,
     waiting: !loading && waiting,

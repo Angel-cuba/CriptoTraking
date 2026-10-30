@@ -1,3 +1,5 @@
+import type { AssetDetailContext } from "@/src/types/assetDetail";
+import { DELIVERY_LABELS } from "./PriceAlertRow";
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
 import { useAssetDetails } from "@/src/hooks/useAssetDetails";
 import { CORNER_RADIUS, type ThemeColors } from "@/src/lib/theme";
@@ -15,11 +17,26 @@ import {
 import { AssetAvatar } from "./AssetAvatar";
 import PriceChart, { formatAssetPrice } from "./PriceChart";
 
+function formatDetailTime(time: number): string {
+  return (
+    new Date(time).toLocaleString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      timeZone: "UTC",
+    }) + " UTC"
+  );
+}
+
 export default function AssetDetail({
   asset,
+  context,
   onClose,
 }: {
   asset: MarketAsset;
+  context?: AssetDetailContext;
   onClose: () => void;
 }) {
   const { colors } = useAppTheme();
@@ -28,19 +45,18 @@ export default function AssetDetail({
     if (Platform.OS === "web") closeButton.current?.focus();
   }, []);
   const styles = useThemeStyles(createStyles);
+  const asOf =
+    context?.kind === "signal"
+      ? context.reading.timestamp
+      : context?.kind === "alert"
+        ? context.event.sourceCloseTime
+        : undefined;
   const { history, loading, error, waiting, reload } = useAssetDetails(
     asset.symbol,
+    asOf,
   );
   const last = history?.candles.at(-1);
   const ticker = asset.ticker;
-  const timestamp = (time: number) =>
-    new Date(time).toLocaleString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "UTC",
-    }) + " UTC";
   return (
     <View style={styles.screen} accessibilityViewIsModal>
       <View style={styles.header}>
@@ -48,9 +64,18 @@ export default function AssetDetail({
           <AssetAvatar symbol={asset.baseAsset} size={40} />
           <View style={{ flexShrink: 1 }}>
             <Text accessibilityRole="header" style={styles.title}>
-              {asset.baseAsset}/{asset.quoteAsset}
+              {asset.quoteAsset
+                ? `${asset.baseAsset}/${asset.quoteAsset}`
+                : asset.symbol}
             </Text>
-            <Text style={styles.caption}>Market analysis · Binance</Text>
+            <Text style={styles.caption}>
+              {context?.kind === "signal"
+                ? "Signal analysis"
+                : context?.kind === "alert"
+                  ? "Alert analysis"
+                  : "Market analysis"}{" "}
+              · Binance
+            </Text>
           </View>
         </View>
         <Pressable
@@ -64,34 +89,44 @@ export default function AssetDetail({
         </Pressable>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={{ gap: 6 }}>
-          <Text style={styles.caption}>
-            Last ticker price · {asset.quoteAsset}
-          </Text>
-          <Text style={styles.price}>
-            {ticker ? formatAssetPrice(ticker.price) : "Unavailable"}
-          </Text>
-          <Text
-            style={{
-              color: ticker
-                ? ticker.changePercent24h >= 0
-                  ? colors.success
-                  : colors.danger
-                : colors.muted,
-              fontSize: 14,
-              fontWeight: "600",
-            }}
-          >
-            {ticker
-              ? `${ticker.changePercent24h >= 0 ? "+" : ""}${ticker.changePercent24h.toFixed(2)}% over 24h`
-              : "No ticker data"}
-          </Text>
-          {ticker ? (
+        {context ? (
+          <EventSummary context={context} quote={asset.quoteAsset} />
+        ) : (
+          <View style={{ gap: 6 }}>
             <Text style={styles.caption}>
-              Ticker as of {timestamp(ticker.sourceCloseTime)}
+              Last ticker price · {asset.quoteAsset}
             </Text>
-          ) : null}
-        </View>
+            <Text style={styles.price}>
+              {ticker ? formatAssetPrice(ticker.price) : "Unavailable"}
+            </Text>
+            <Text
+              style={{
+                color: ticker
+                  ? ticker.changePercent24h >= 0
+                    ? colors.success
+                    : colors.danger
+                  : colors.muted,
+                fontSize: 14,
+                fontWeight: "600",
+              }}
+            >
+              {ticker
+                ? `${ticker.changePercent24h >= 0 ? "+" : ""}${ticker.changePercent24h.toFixed(2)}% over 24h`
+                : "No ticker data"}
+            </Text>
+            {ticker ? (
+              <Text style={styles.caption}>
+                Ticker as of {formatDetailTime(ticker.sourceCloseTime)}
+              </Text>
+            ) : null}
+          </View>
+        )}
+        {context && !asset.quoteAsset ? (
+          <Text style={styles.caption}>
+            Pair metadata unavailable. Prices use the original quote currency;
+            volume uses the base asset.
+          </Text>
+        ) : null}
         <View style={styles.card}>
           <View style={styles.sectionHeader}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>
@@ -110,6 +145,12 @@ export default function AssetDetail({
               </Text>
             </Pressable>
           </View>
+          {asOf !== undefined ? (
+            <Text style={styles.caption}>
+              Hourly context as of {formatDetailTime(asOf)}. Only candles closed
+              by this time are included.
+            </Text>
+          ) : null}
           {loading && !history ? (
             <View style={styles.placeholder}>
               <ActivityIndicator color={colors.primary} />
@@ -125,8 +166,8 @@ export default function AssetDetail({
           {history && history.candles.length >= 2 ? (
             <PriceChart
               candles={history.candles}
-              quote={asset.quoteAsset}
-              base={asset.baseAsset}
+              quote={asset.quoteAsset || "quote units"}
+              base={asset.quoteAsset ? asset.baseAsset : "base units"}
             />
           ) : !loading && !error ? (
             <Text style={styles.caption}>
@@ -135,7 +176,7 @@ export default function AssetDetail({
           ) : null}
           {history ? (
             <Text style={styles.caption}>
-              Loaded {timestamp(history.receivedAt)} ·{" "}
+              Loaded {formatDetailTime(history.receivedAt)} ·{" "}
               {Math.min(24, history.candles.length)} hourly candles
             </Text>
           ) : null}
@@ -143,10 +184,13 @@ export default function AssetDetail({
         {last ? (
           <View style={styles.card}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>
-              Latest closed candle
+              {context
+                ? "Last closed candle in this chart"
+                : "Latest closed candle"}
             </Text>
             <Text style={styles.caption}>
-              {timestamp(last.closeTime)} · Prices in {asset.quoteAsset}
+              {formatDetailTime(last.closeTime)} · Prices in{" "}
+              {asset.quoteAsset || "quote units"}
             </Text>
             <View style={styles.grid}>
               {[
@@ -164,9 +208,10 @@ export default function AssetDetail({
               ))}
             </View>
             <Text style={styles.caption}>
-              Volume {formatAssetPrice(last.volume)} {asset.baseAsset}
+              Volume {formatAssetPrice(last.volume)}{" "}
+              {asset.quoteAsset ? asset.baseAsset : "base units"}
             </Text>
-            {history?.reading ? (
+            {history?.reading && context?.kind !== "signal" ? (
               <>
                 <View style={styles.grid}>
                   {[
@@ -181,16 +226,18 @@ export default function AssetDetail({
                     </View>
                   ))}
                 </View>
-                <Text style={styles.body}>{history.reading.reason}</Text>
+                {!context ? (
+                  <Text style={styles.body}>{history.reading.reason}</Text>
+                ) : null}
               </>
-            ) : (
+            ) : !history?.reading ? (
               <Text style={styles.caption}>
                 At least 11 closed candles are needed for a crossover reading.
               </Text>
-            )}
+            ) : null}
           </View>
         ) : null}
-        {ticker ? (
+        {ticker && !context ? (
           <View style={styles.card}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>
               24h market statistics
@@ -226,6 +273,110 @@ export default function AssetDetail({
     </View>
   );
 }
+function EventSummary({
+  context,
+  quote,
+}: {
+  context: AssetDetailContext;
+  quote: string;
+}) {
+  const { colors } = useAppTheme();
+  const styles = useThemeStyles(createStyles);
+  const price = (value: number) =>
+    value < 0.0000001
+      ? value.toExponential(4)
+      : value.toLocaleString("en-US", { maximumSignificantDigits: 10 });
+  const upward =
+    context.kind === "signal"
+      ? context.reading.type === "BUY"
+      : context.event.direction === "up";
+  const color =
+    context.kind === "signal" && context.reading.type === "NEUTRAL"
+      ? colors.text
+      : upward
+        ? colors.success
+        : colors.danger;
+  const metrics: [string, number][] =
+    context.kind === "signal"
+      ? [
+          ["SMA5", context.reading.sma5],
+          ["SMA10", context.reading.sma10],
+        ]
+      : [
+          ["Reference", context.event.referencePrice],
+          ["Observed", context.event.price],
+        ];
+  return (
+    <View style={styles.card}>
+      <Text accessibilityRole="header" style={styles.sectionTitle}>
+        {context.kind === "signal"
+          ? context.cached
+            ? "Saved signal reading"
+            : "Signal reading"
+          : "Price alert"}
+      </Text>
+      <Text style={[styles.price, { color }]}>
+        {context.kind === "signal"
+          ? context.reading.type
+          : `${upward ? "+" : "−"}${Math.abs(context.event.changePercent).toFixed(2)}%`}
+      </Text>
+      <Text style={styles.body}>
+        {context.kind === "signal"
+          ? context.reading.reason
+          : "Movement from the saved reference price."}
+      </Text>
+      <View style={styles.grid}>
+        {metrics.map(([label, value]) => (
+          <View key={label} style={styles.metric}>
+            <Text style={styles.caption}>
+              {label}
+              {quote ? ` · ${quote}` : ""}
+            </Text>
+            <Text style={styles.value}>{price(value)}</Text>
+          </View>
+        ))}
+      </View>
+      {context.kind === "signal" ? (
+        <>
+          <Text style={styles.caption}>
+            Closed candle · {formatDetailTime(context.reading.timestamp)}
+          </Text>
+          <Text style={styles.caption}>
+            Checked ·{" "}
+            {context.reading.checkedAt
+              ? formatDetailTime(context.reading.checkedAt)
+              : "Time unavailable"}
+          </Text>
+          {context.failure ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {context.failure} Showing the saved reading.
+            </Text>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <Text style={styles.caption}>
+            Price observed · {formatDetailTime(context.event.sourceCloseTime)}
+          </Text>
+          <Text style={styles.caption}>
+            Received · {formatDetailTime(context.event.receivedAt)}
+          </Text>
+          <Text style={styles.caption}>
+            Created · {formatDetailTime(context.event.createdAt)}
+          </Text>
+          <Text style={styles.body}>
+            {DELIVERY_LABELS[context.event.notificationStatus ?? "unknown"]}
+          </Text>
+          <Text style={styles.caption}>
+            This alert tracks price movement. The hourly chart below provides
+            context; an SMA crossover is a separate signal.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+}
+
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },

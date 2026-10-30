@@ -1,3 +1,4 @@
+import type { AssetDetailContext } from "@/src/types/assetDetail";
 import { useAppTheme } from "@/src/context/ThemeContext";
 import type { MarketAsset } from "@/src/types/market";
 import { lazy, Suspense } from "react";
@@ -6,11 +7,20 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 const AssetDetail = lazy(() => import("./AssetDetail"));
 
+export function getDetailAsset(
+  symbol: string,
+  asset?: MarketAsset,
+): MarketAsset {
+  return asset ?? { symbol, baseAsset: symbol, quoteAsset: "", ticker: null };
+}
+
 export function AssetDetailContent({
   asset,
+  context,
   onClose,
 }: {
   asset: MarketAsset;
+  context?: AssetDetailContext;
   onClose: () => void;
 }) {
   const { colors } = useAppTheme();
@@ -36,16 +46,23 @@ export function AssetDetailContent({
         </View>
       }
     >
-      <AssetDetail key={asset.symbol} asset={asset} onClose={onClose} />
+      <AssetDetail
+        key={`${asset.symbol}:${context?.kind === "signal" ? context.reading.timestamp : context?.kind === "alert" ? context.event.id : "market"}`}
+        asset={asset}
+        context={context}
+        onClose={onClose}
+      />
     </Suspense>
   );
 }
 
 export function AssetDetailModal({
   asset,
+  context,
   onClose,
 }: {
   asset: MarketAsset | null;
+  context?: AssetDetailContext;
   onClose: () => void;
 }) {
   const { colors } = useAppTheme();
@@ -60,7 +77,11 @@ export function AssetDetailModal({
       {asset ? (
         <SafeAreaProvider>
           <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-            <AssetDetailContent asset={asset} onClose={onClose} />
+            <AssetDetailContent
+              asset={asset}
+              context={context}
+              onClose={onClose}
+            />
           </SafeAreaView>
         </SafeAreaProvider>
       ) : null}

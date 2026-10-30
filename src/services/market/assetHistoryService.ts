@@ -20,10 +20,15 @@ const HOUR_MS = 3_600_000;
 const CACHE_TTL_MS = 60_000;
 const cache = new Map<string, AssetHistory>();
 
+function historyKey(symbol: string, asOf?: number): string {
+  return asOf === undefined ? symbol : `${symbol}:${asOf}`;
+}
+
 export function getCachedAssetHistory(
   symbol: string,
+  asOf?: number,
 ): AssetHistory | undefined {
-  return cache.get(symbol);
+  return cache.get(historyKey(symbol, asOf));
 }
 
 export function parseAssetCandles(data: unknown, now: number): AssetCandle[] {
@@ -75,28 +80,38 @@ export async function getAssetHistory(
   symbol: string,
   signal: AbortSignal,
   refresh = false,
+  asOf?: number,
 ): Promise<AssetHistory> {
   if (!/^[\p{L}\p{N}]{2,80}$/u.test(symbol))
     throw new Error("Invalid market symbol.");
   if (signal.aborted) throw new Error("History request cancelled.");
-  const cached = cache.get(symbol);
+  if (
+    asOf !== undefined &&
+    (!Number.isSafeInteger(asOf) || asOf <= 0 || asOf > Date.now())
+  )
+    throw new Error("Invalid chart cutoff time.");
+  const key = historyKey(symbol, asOf);
+  const cached = cache.get(key);
   if (!refresh && cached && Date.now() - cached.receivedAt < CACHE_TTL_MS)
     return cached;
   // Ten warm-up candles provide full SMA windows before the 24 visible hourly candles.
   const data = await fetchMarketData(
-    `/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=1h&limit=35`,
+    `/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=1h&limit=35${asOf === undefined ? "" : `&endTime=${asOf}`}`,
     signal,
   );
   if (signal.aborted) throw new Error("History request cancelled.");
   const receivedAt = Date.now();
-  const candles = parseAssetCandles(data, receivedAt);
+  // A historical event must not include the eventual close of its still-open hour.
+  const cutoff =
+    asOf === undefined ? receivedAt : Math.min(receivedAt, asOf + 1);
+  const candles = parseAssetCandles(data, cutoff);
   const history = {
     candles,
     receivedAt,
-    reading: candles.length >= 11 ? calculateSignal(candles, receivedAt) : null,
+    reading: candles.length >= 11 ? calculateSignal(candles, cutoff) : null,
   };
-  cache.delete(symbol);
-  cache.set(symbol, history);
+  cache.delete(key);
+  cache.set(key, history);
   if (cache.size > 20) cache.delete(cache.keys().next().value!);
   return history;
 }

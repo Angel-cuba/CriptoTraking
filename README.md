@@ -145,6 +145,8 @@ Tapping a row in My watchlist or All markets opens an analysis modal with up to 
 
 Chart history loads when the detail opens, with a 10-second deadline and a one-minute in-memory cache bounded to 20 entries. Manual refresh bypasses the fresh cache; request failures retain previously loaded candles. Chart requests share the catalog's provider rate-limit window. Closing the detail cancels its request, and returning to All markets retains the catalog's filters and scroll position. Charts load as a separate web chunk when opened.
 
+Signals opens that same detail anchored to the selected reading's closed candle. Alerts opens the saved reference, observed price, movement and notification status, with hourly candles closed by the event's source time. Current tickers and rolling 24h statistics are not presented as historical event values. The history cache separates latest and historical windows; refreshing a historical chart keeps its original cutoff. Opening a detail does not recalculate stored signals or replay notifications. Alert filters and pagination remain mounted beneath the modal. Missing catalog metadata leaves the saved symbol and event available without guessing its base or quote currency.
+
 ## Hourly signals and notifications
 
 Signals covers followed pairs present in the market catalog. Readings refresh when available after the screen mounts, when the watchlist changes, on manual refresh and on foreground resume. The market's 60-second polling timer does not recalculate hourly signals.
@@ -157,7 +159,7 @@ The engine requests 20 hourly candles, excludes unfinished candles and requires 
 | `SELL` | Bearish crossover | Previous SMA5 was at or above SMA10; current SMA5 is below SMA10. |
 | `NEUTRAL` | No new crossover | Neither crossover occurred. Being above or below an average alone is not a new signal. |
 
-Each expandable reading shows its closed-candle timestamp, separate check time and averages in the pair's quote currency. Small prices retain significant digits rather than rounding to zero.
+Tapping a reading opens the shared analysis modal with its saved result, closed-candle timestamp, separate check time and averages in the pair's quote currency. Small prices retain significant digits rather than rounding to zero.
 
 Requests run in groups of at most three, with a 10-second limit per market request and a 15-second batch deadline. A failed or timed-out pair does not discard completed readings. Failed pairs retain their saved reading when available. A batch timeout or provider rate limit stops later batches in that refresh; retry checks them again. Unavailable catalog pairs are identified separately.
 
