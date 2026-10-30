@@ -5,26 +5,8 @@ import { AssetAvatar } from "@/src/components/AssetAvatar";
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
 import { CORNER_RADIUS, type ThemeColors } from "@/src/lib/theme";
 import type { MarketSymbol } from "@/src/types/market";
-import type {
-  PriceAlertEvent,
-  PriceAlertNotificationStatus,
-} from "@/src/types/priceAlert";
-
-export const DELIVERY_LABELS: Record<PriceAlertNotificationStatus, string> = {
-  pending: "Notification status unconfirmed",
-  unknown: "Notification status unconfirmed",
-  scheduled: "Notification scheduled",
-  "permission-denied": "Notification permission denied",
-  disabled: "Price notifications off",
-  failed: "Notification scheduling failed",
-  unsupported: "Notifications unavailable",
-  skipped: "Notification skipped",
-};
-
-function formatPrice(price: number) {
-  if (price < 0.0000001) return price.toExponential(4);
-  return price.toLocaleString("en-US", { maximumSignificantDigits: 10 });
-}
+import type { PriceAlertEvent } from "@/src/types/priceAlert";
+import { DELIVERY_LABELS, formatAssetPrice } from "@/src/lib/assetPresentation";
 
 export function PriceAlertRow({
   event,
@@ -101,7 +83,7 @@ export function PriceAlertRow({
               adjustsFontSizeToFit
               minimumFontScale={0.85}
             >
-              {formatPrice(event.referencePrice)}
+              {formatAssetPrice(event.referencePrice)}
             </Text>
           </View>
           <SymbolView
@@ -123,7 +105,7 @@ export function PriceAlertRow({
               adjustsFontSizeToFit
               minimumFontScale={0.85}
             >
-              {formatPrice(event.price)}
+              {formatAssetPrice(event.price)}
             </Text>
           </View>
         </View>

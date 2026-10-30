@@ -1,15 +1,9 @@
+import { formatAssetPrice } from "@/src/lib/assetPresentation";
 import { useAppTheme } from "@/src/context/ThemeContext";
 import type { AssetCandle } from "@/src/services/market/assetHistoryService";
 import { useMemo, useState } from "react";
 import { Text, View, useWindowDimensions } from "react-native";
 import { BarChart, CandleStickChart } from "react-native-gifted-charts";
-
-export function formatAssetPrice(value: number): string {
-  if (value > 0 && value < 0.000001) return value.toExponential(2);
-  return value.toLocaleString("en-US", {
-    maximumFractionDigits: value >= 1 ? 2 : 8,
-  });
-}
 
 export default function PriceChart({
   candles,
@@ -22,8 +16,6 @@ export default function PriceChart({
 }) {
   const { colors } = useAppTheme();
   const { fontScale } = useWindowDimensions();
-  // Reserve the axis gutter in the SMA canvas too, so its final points are not clipped.
-  const axisWidth = Math.ceil(58 * Math.max(1, fontScale));
   const [containerWidth, setContainerWidth] = useState(0);
   const chart = useMemo(() => {
     const start = Math.max(0, candles.length - 24);
@@ -51,6 +43,14 @@ export default function PriceChart({
     const baseline = low - padding;
     const range = high - low + padding * 2;
     const scale = (value: number) => ((value - baseline) / range) * 100;
+    // Flat markets need more significant digits to keep neighboring axis labels distinct.
+    const axisDigits = Math.min(
+      15,
+      Math.max(3, Math.ceil(Math.log10(high / range)) + 3),
+    );
+    const axisLabels = [0, 25, 50, 75, 100].map((percent) =>
+      formatAssetPrice(baseline + (percent / 100) * range, axisDigits),
+    );
     // Normalize OHLC and averages together; the candle renderer positions wicks from zero.
     const data = visible.map((item) => {
       const color = item.close >= item.open ? colors.success : colors.danger;
@@ -76,8 +76,15 @@ export default function PriceChart({
       averages,
       baseline,
       range,
+      axisDigits,
+      axisLabels,
     };
   }, [candles, colors]);
+  // Use the same gutter for candles, averages and volume, including larger system text.
+  const axisWidth = Math.ceil(
+    Math.max(58, ...chart.axisLabels.map((label) => label.length * 6 + 8)) *
+      Math.max(1, fontScale),
+  );
   const width = Math.max(0, containerWidth - axisWidth - 4);
   const step = Math.max(0, width - 16) / Math.max(1, chart.data.length);
   const barWidth = Math.max(2, step * 0.55);
@@ -137,6 +144,7 @@ export default function PriceChart({
               formatYLabel={(label) =>
                 formatAssetPrice(
                   chart.baseline + (Number(label) / 100) * chart.range,
+                  chart.axisDigits,
                 )
               }
               verticalLinesShift={barWidth / 2 + 1}

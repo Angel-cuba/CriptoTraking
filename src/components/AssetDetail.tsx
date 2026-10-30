@@ -1,5 +1,5 @@
 import type { AssetDetailContext } from "@/src/types/assetDetail";
-import { DELIVERY_LABELS } from "./PriceAlertRow";
+import { DELIVERY_LABELS, formatAssetPrice } from "@/src/lib/assetPresentation";
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
 import { useAssetDetails } from "@/src/hooks/useAssetDetails";
 import { CORNER_RADIUS, type ThemeColors } from "@/src/lib/theme";
@@ -15,12 +15,13 @@ import {
   View,
 } from "react-native";
 import { AssetAvatar } from "./AssetAvatar";
-import PriceChart, { formatAssetPrice } from "./PriceChart";
+import PriceChart from "./PriceChart";
 
 function formatDetailTime(time: number): string {
   return (
     new Date(time).toLocaleString("en-GB", {
       day: "2-digit",
+      year: "numeric",
       month: "short",
       hour: "2-digit",
       minute: "2-digit",
@@ -282,10 +283,6 @@ function EventSummary({
 }) {
   const { colors } = useAppTheme();
   const styles = useThemeStyles(createStyles);
-  const price = (value: number) =>
-    value < 0.0000001
-      ? value.toExponential(4)
-      : value.toLocaleString("en-US", { maximumSignificantDigits: 10 });
   const upward =
     context.kind === "signal"
       ? context.reading.type === "BUY"
@@ -332,7 +329,7 @@ function EventSummary({
               {label}
               {quote ? ` · ${quote}` : ""}
             </Text>
-            <Text style={styles.value}>{price(value)}</Text>
+            <Text style={styles.value}>{formatAssetPrice(value)}</Text>
           </View>
         ))}
       </View>
