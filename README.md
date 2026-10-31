@@ -89,7 +89,7 @@ Expo generates the ignored `android/` directory, compiles the native modules and
 
 Use one Metro server per port. With the server running, use `s` to select the development build before opening Android with `a`, or Expo Go before opening iOS with `i`. Switching the launch target does not disconnect an already running app.
 
-Expo Router 57.0.28 can report an [initial-link state update before mounting on Android](https://github.com/expo/expo/issues/49378). Kripto uses the unmodified package. This intermittent development warning remains a known dependency limitation; it is not suppressed.
+The project previously encountered an [initial-link state update before mounting on Android](https://github.com/expo/expo/issues/49378) with Expo Router 57.0.28. It now uses the compatible 57.0.29 patch without package patches or warning suppression; the original Android scenario has not been rechecked after this update.
 
 ## Accounts and persistence
 
@@ -267,6 +267,8 @@ Use a demo account for changes to account data. Signals needs enough closed cand
 ## Limits and troubleshooting
 
 There is no background worker, remote push service, trading execution or wallet integration. Standalone release builds, fresh-clone installation and two-account database isolation still need end-to-end verification. A mobile email-confirmation callback is not implemented.
+
+The compatible SDK 57 patch updates do not resolve every transitive dependency advisory. Routing and build-tool dependencies still require a separate compatibility review; the project does not force a different SDK or override incompatible transitive versions.
 
 | Symptom | Check |
 | --- | --- |
