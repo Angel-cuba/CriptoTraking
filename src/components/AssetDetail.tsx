@@ -1,5 +1,9 @@
 import type { AssetDetailContext } from "@/src/types/assetDetail";
-import { DELIVERY_LABELS, formatAssetPrice } from "@/src/lib/assetPresentation";
+import {
+  DELIVERY_LABELS,
+  SIGNAL_COPY,
+  formatAssetPrice,
+} from "@/src/lib/assetPresentation";
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
 import { useAssetDetails } from "@/src/hooks/useAssetDetails";
 import { CORNER_RADIUS, type ThemeColors } from "@/src/lib/theme";
@@ -199,8 +203,8 @@ export default function AssetDetail({
           </Pressable>
           {showIndicators ? (
             <Text style={styles.caption}>
-              These lines show the average closing price over 5 hours (SMA5) and
-              10 hours (SMA10). They provide context for the price movement.
+              These lines show the average closing price over 5 and 10 completed
+              hours. The 10-hour average includes the same 5 recent hours.
             </Text>
           ) : null}
           {loading && !history ? (
@@ -262,8 +266,8 @@ export default function AssetDetail({
                 <>
                   <View style={styles.grid}>
                     {[
-                      ["SMA5", history.reading.sma5],
-                      ["SMA10", history.reading.sma10],
+                      ["5-hour average", history.reading.sma5],
+                      ["10-hour average", history.reading.sma10],
                     ].map(([label, value]) => (
                       <View key={label} style={styles.metric}>
                         <Text style={styles.caption}>{label}</Text>
@@ -274,12 +278,14 @@ export default function AssetDetail({
                     ))}
                   </View>
                   {!context ? (
-                    <Text style={styles.body}>{history.reading.reason}</Text>
+                    <Text style={styles.body}>
+                      {SIGNAL_COPY[history.reading.type].summary}
+                    </Text>
                   ) : null}
                 </>
               ) : showIndicators && !history?.reading ? (
                 <Text style={styles.caption}>
-                  At least 11 closed candles are needed for a crossover reading.
+                  More completed hours are needed to analyze these averages.
                 </Text>
               ) : null}
             </DetailDisclosure>
@@ -358,29 +364,46 @@ function EventSummary({
         ? colors.success
         : colors.danger;
   const metrics: [string, number][] = [
-    ["SMA5", context.reading.sma5],
-    ["SMA10", context.reading.sma10],
+    ["5-hour average", context.reading.sma5],
+    ["10-hour average", context.reading.sma10],
   ];
   return (
     <View style={styles.card}>
       <Text accessibilityRole="header" style={styles.sectionTitle}>
         {context.cached ? "Saved signal reading" : "Signal reading"}
       </Text>
-      <Text style={[styles.price, { color }]}>{context.reading.type}</Text>
-      <Text style={styles.body}>{context.reading.reason}</Text>
-      <View style={styles.grid}>
-        {metrics.map(([label, value]) => (
-          <View key={label} style={styles.metric}>
-            <Text style={styles.caption}>
-              {label}
-              {quote ? ` · ${quote}` : ""}
-            </Text>
-            <Text style={styles.value}>{formatAssetPrice(value)}</Text>
-          </View>
-        ))}
-      </View>
+      <Text style={[styles.signalTitle, { color }]}>
+        {SIGNAL_COPY[context.reading.type].label}
+      </Text>
+      <Text style={styles.body}>{SIGNAL_COPY[context.reading.type].summary}</Text>
+      <DetailDisclosure label="How this signal works">
+        <Text style={styles.body}>
+          We compare the average closing price over the last 5 completed hours
+          with the last 10. The 10-hour average includes those same 5 recent hours.
+          A new signal appears only when the two averages cross.
+        </Text>
+        <Text style={styles.caption}>
+          This describes past price movements and does not predict what happens
+          next. No new signal does not mean the price stayed the same.
+        </Text>
+        <View style={styles.grid}>
+          {metrics.map(([label, value]) => (
+            <View key={label} style={styles.metric}>
+              <Text style={styles.caption}>
+                {label}
+                {quote ? ` · ${quote}` : ""}
+              </Text>
+              <Text style={styles.value}>{formatAssetPrice(value)}</Text>
+            </View>
+          ))}
+        </View>
+      </DetailDisclosure>
+      <DetailDisclosure label="Technical details">
+        <Text style={styles.caption}>Result code · {context.reading.type}</Text>
+        <Text style={styles.body}>{context.reading.reason}</Text>
+      </DetailDisclosure>
       <Text style={styles.caption}>
-        Closed candle · {formatDetailTime(context.reading.timestamp)}
+        Analyzed hour · {formatDetailTime(context.reading.timestamp)}
       </Text>
       <Text style={styles.caption}>
         Checked ·{" "}
@@ -536,6 +559,7 @@ const createStyles = (colors: ThemeColors) =>
     title: { color: colors.text, fontSize: 18, fontWeight: "700" },
     caption: { color: colors.muted, fontSize: 12, lineHeight: 18 },
     body: { color: colors.text, fontSize: 14, lineHeight: 20 },
+    signalTitle: { color: colors.text, fontSize: 24, lineHeight: 30, fontWeight: "700" },
     price: {
       color: colors.text,
       fontSize: 32,

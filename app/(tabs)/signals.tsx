@@ -202,7 +202,7 @@ function SignalsContent({ userId }: { userId: string }) {
               />
             </View>
             <Text style={styles.body}>
-              SMA5 / SMA10 · Closed 1h candles · Binance spot
+              Completed hourly prices · Binance
             </Text>
             {[
               {

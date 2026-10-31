@@ -1,5 +1,6 @@
 import { AssetAvatar } from "@/src/components/AssetAvatar";
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
+import { SIGNAL_COPY } from "@/src/lib/assetPresentation";
 import { CORNER_RADIUS, type ThemeColors } from "@/src/lib/theme";
 import type { AssetSignal } from "@/src/services/signal/signalService";
 import type { MarketSymbol } from "@/src/types/market";
@@ -12,12 +13,6 @@ import {
   Text,
   View,
 } from "react-native";
-
-const labels = {
-  BUY: "Bullish crossover",
-  SELL: "Bearish crossover",
-  NEUTRAL: "No new crossover",
-};
 
 export function SignalCard({
   symbol,
@@ -53,7 +48,7 @@ export function SignalCard({
         ? colors.dangerSoft
         : colors.elevated;
   const status = signal
-    ? labels[signal.type]
+    ? SIGNAL_COPY[signal.type].label
     : loading
       ? "Checking…"
       : "Reading unavailable";
@@ -70,7 +65,7 @@ export function SignalCard({
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         accessibilityRole="button"
-        accessibilityLabel={`${pair}, ${signal ? signal.type + ", " : ""}${status}, details`}
+        accessibilityLabel={`${pair}, ${status}, details`}
         accessibilityHint="Open hourly analysis and the saved signal reading."
         accessibilityState={{
           disabled: !signal,
@@ -82,12 +77,14 @@ export function SignalCard({
           <Text style={styles.pair} numberOfLines={2}>
             {pair}
           </Text>
-          <Text style={styles.status}>{status}</Text>
+          <Text style={styles.status}>
+            {signal ? "Hourly price analysis" : status}
+          </Text>
         </View>
         {signal ? (
           <View style={[styles.badge, { backgroundColor: badgeBackground }]}>
             <Text style={[styles.badgeText, { color: colors[tone] }]}>
-              {signal.type}
+              {SIGNAL_COPY[signal.type].label}
             </Text>
           </View>
         ) : null}
@@ -147,7 +144,13 @@ const createStyles = (colors: ThemeColors) =>
     identity: { flex: 1, minWidth: 0, gap: 3 },
     pair: { color: colors.text, fontSize: 16, fontWeight: "700" },
     status: { color: colors.muted, fontSize: 12, lineHeight: 18 },
-    badge: { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8 },
+    badge: {
+      paddingHorizontal: 8,
+      paddingVertical: 5,
+      borderRadius: 8,
+      flexShrink: 1,
+      maxWidth: "42%",
+    },
     badgeText: { fontSize: 11, fontWeight: "700" },
     pressed: { opacity: 0.7 },
     focused: {

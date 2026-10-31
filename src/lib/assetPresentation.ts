@@ -5,6 +5,24 @@ import type {
   PriceAlertNotificationStatus,
 } from "@/src/types/priceAlert";
 
+export const SIGNAL_COPY: Record<
+  AssetSignal["type"],
+  { label: string; summary: string }
+> = {
+  BUY: {
+    label: "Upward signal",
+    summary: "The recent price average moved above the longer average.",
+  },
+  SELL: {
+    label: "Downward signal",
+    summary: "The recent price average moved below the longer average.",
+  },
+  NEUTRAL: {
+    label: "No new signal",
+    summary: "The recent and longer price averages did not cross in the latest completed hour.",
+  },
+};
+
 export const DELIVERY_LABELS: Record<PriceAlertNotificationStatus, string> = {
   pending: "Notification status unconfirmed",
   unknown: "Notification status unconfirmed",
@@ -39,7 +57,7 @@ export function getSignalNotificationCopy(
   if (signal.type === "NEUTRAL") return null;
   const direction = signal.type === "BUY" ? "Upward" : "Downward";
   return {
-    title: `${notificationPair(signal.symbol, asset)} · ${direction} signal`,
+    title: `${notificationPair(signal.symbol, asset)} · ${SIGNAL_COPY[signal.type].label}`,
     body: `${direction} shift in hourly price analysis.`,
   };
 }

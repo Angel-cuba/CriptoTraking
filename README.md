@@ -182,11 +182,11 @@ The engine requests 20 hourly candles, excludes unfinished candles and requires 
 
 | State | Display | Condition |
 | --- | --- | --- |
-| `BUY` | Bullish crossover | Previous SMA5 was at or below SMA10; current SMA5 is above SMA10. |
-| `SELL` | Bearish crossover | Previous SMA5 was at or above SMA10; current SMA5 is below SMA10. |
-| `NEUTRAL` | No new crossover | Neither crossover occurred. Being above or below an average alone is not a new signal. |
+| `BUY` | Upward signal | Previous SMA5 was at or below SMA10; current SMA5 is above SMA10. |
+| `SELL` | Downward signal | Previous SMA5 was at or above SMA10; current SMA5 is below SMA10. |
+| `NEUTRAL` | No new signal | Neither crossover occurred. Being above or below an average alone is not a new signal. |
 
-Tapping a reading opens the shared analysis modal with its saved result, closed-candle timestamp, separate check time and averages in the pair's quote currency. Small prices retain significant digits rather than rounding to zero.
+Tapping a reading opens the shared analysis modal with a plain-language result, analyzed-hour timestamp and separate check time. **How this signal works** explains the overlapping 5-hour and 10-hour closing-price averages and shows their values in the pair's quote currency. Internal result codes and calculation reasons remain under **Technical details**. **No new signal** means there was no new crossover; it does not mean the price was unchanged. Small prices retain significant digits rather than rounding to zero.
 
 Requests run in groups of at most three, with a 10-second limit per market request and a 15-second batch deadline. Their HTTP transport and provider retry window are shared with the market catalog and charts. A failed or timed-out pair does not discard completed readings. Failed pairs retain their saved reading when available. A batch timeout or provider rate limit stops later batches in that refresh; retry checks them again. Pairs absent from the last successfully loaded catalog are separated into a compact **Unavailable** section in Signals. **Review** reveals their symbols and an explicit **Remove** action, which saves the watchlist through the existing profile flow. A failed removal keeps the pair visible. Catalog loading or an initial connection failure does not classify pairs as unavailable; later refreshes and failures retain the previous snapshot. Removing a favorite does not require the market provider to be online. Missing hourly history has its own message and never creates a neutral reading.
 
