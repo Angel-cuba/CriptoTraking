@@ -24,14 +24,14 @@ export const SIGNAL_COPY: Record<
 };
 
 export const DELIVERY_LABELS: Record<PriceAlertNotificationStatus, string> = {
-  pending: "Notification status unconfirmed",
-  unknown: "Notification status unconfirmed",
-  scheduled: "Notification scheduled",
-  "permission-denied": "Notification permission denied",
-  disabled: "Price notifications off",
-  failed: "Notification scheduling failed",
-  unsupported: "Notifications unavailable",
-  skipped: "Notification skipped",
+  pending: "Notification status unknown",
+  unknown: "Notification status unknown",
+  scheduled: "Notification queued",
+  "permission-denied": "Blocked by device settings",
+  disabled: "Notifications off",
+  failed: "Could not create notification",
+  unsupported: "Notifications unavailable here",
+  skipped: "Notification not created",
 };
 
 export function formatAssetPrice(

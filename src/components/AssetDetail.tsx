@@ -303,6 +303,10 @@ export default function AssetDetail({
               <Text style={styles.caption}>
                 {DELIVERY_LABELS[context.event.notificationStatus ?? "unknown"]}
               </Text>
+              <Text style={styles.caption}>
+                Queued means the device accepted the notification request. It does
+                not confirm that the notification was displayed or read.
+              </Text>
             </DetailDisclosure>
           </View>
         ) : null}
@@ -444,11 +448,11 @@ function PriceAlertSummary({
           {upward ? "+" : "−"}
           {Math.abs(event.changePercent).toFixed(2)}%
         </Text>
-        <Text style={styles.caption}>Compared with the saved reference price.</Text>
+        <Text style={styles.caption}>Compared with the saved starting price.</Text>
       </View>
       <View style={styles.priceComparison}>
         {([
-          ["Saved reference", event.referencePrice],
+          ["Starting price", event.referencePrice],
           ["Price at alert", event.price],
         ] as const).map(([label, value]) => (
           <View key={label} style={styles.comparisonRow}>
@@ -465,8 +469,9 @@ function PriceAlertSummary({
       </Text>
       <DetailDisclosure label="How this alert works">
         <Text style={styles.body}>
-          The saved reference is the price used for comparison. This alert was
-          recorded when {base} moved {upward ? "above" : "below"} that price.
+          The starting price is saved when monitoring begins or restarts, and
+          updated after each recorded alert. This alert compares it with the
+          price of {base} at that moment.
         </Text>
         <Text style={styles.caption}>
           “Price at alert” is the price at that moment, rather than a live quote.

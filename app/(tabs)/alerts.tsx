@@ -139,7 +139,7 @@ function AlertsContent() {
       ? savingPreference
         ? "Saving preference…"
         : pendingEnabled
-          ? "Enable not saved"
+          ? "Could not save the on preference"
           : "Paused for this session; pause not saved"
       : enabled === null
         ? loading
@@ -168,21 +168,21 @@ function AlertsContent() {
     notificationStatus = savingPreference
       ? "Saving preference…"
       : pendingNotificationsEnabled
-        ? "Enable not saved"
+        ? "Could not save the on preference"
         : "Off for this session; change not saved";
   else if (notificationsEnabled === null)
     notificationStatus = loading
       ? "Loading preference…"
       : "Preference unavailable";
   else if (permission === "denied")
-    notificationStatus = "System permission denied";
+    notificationStatus = "Blocked in device settings";
   else if (notifying && permission === "provisional")
-    notificationStatus = "On with quiet delivery";
+    notificationStatus = "On · Quiet notifications";
   else if (
     notifying &&
     (permission === "undetermined" || permission === "unknown")
   )
-    notificationStatus = "System permission needs checking";
+    notificationStatus = "Check notification permissions";
   else if (notifying && !monitoring)
     notificationStatus = "On; price monitoring is paused";
 
@@ -282,9 +282,10 @@ function AlertsContent() {
                   />
                 </SettingsRow>
                 <Text style={styles.caption}>
-                  Threshold ±{DEFAULT_PRICE_ALERT_SETTINGS.thresholdPercent}% ·{" "}
-                  {DEFAULT_PRICE_ALERT_SETTINGS.cooldownMs / 60_000} min between
-                  alerts per pair
+                  Moves of ±{DEFAULT_PRICE_ALERT_SETTINGS.thresholdPercent}% from
+                  the starting price ·{" "}
+                  {DEFAULT_PRICE_ALERT_SETTINGS.cooldownMs / 60_000} min minimum
+                  between alerts per pair
                 </Text>
                 <View style={styles.divider} />
                 <SettingsRow
@@ -314,8 +315,8 @@ function AlertsContent() {
                 {notificationSupported &&
                 (permission === "denied" || permission === "provisional") ? (
                   <ActionButton
-                    title="System settings"
-                    accessibilityLabel="Open notification system settings"
+                    title="Open device settings"
+                    accessibilityLabel="Open device notification settings"
                     secondary
                     onPress={openSystemSettings}
                   />

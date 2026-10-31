@@ -30,7 +30,7 @@ export function PriceAlertRow({
         style={({ pressed }) => [styles.card, pressed && { opacity: 0.7 }]}
         onPress={onOpen}
         accessibilityRole="button"
-        accessibilityLabel={`View ${pair} alert details, ${change} since reference`}
+        accessibilityLabel={`View ${pair} alert details, ${change} from the starting price`}
         accessibilityHint="Open the saved alert and its hourly chart."
       >
         <View style={styles.topLine}>
@@ -56,7 +56,7 @@ export function PriceAlertRow({
                     : colors.dangerSoft,
                 },
               ]}
-              accessibilityLabel={`${upward ? "Up" : "Down"} ${Math.abs(event.changePercent).toFixed(2)} percent since reference`}
+              accessibilityLabel={`${upward ? "Up" : "Down"} ${Math.abs(event.changePercent).toFixed(2)} percent from the starting price`}
             >
               <SymbolView
                 name={{
@@ -69,13 +69,13 @@ export function PriceAlertRow({
               />
               <Text style={[styles.percentage, { color }]}>{change}</Text>
             </View>
-            <Text style={styles.caption}>Since reference</Text>
+            <Text style={styles.caption}>From starting price</Text>
           </View>
         </View>
         <View style={styles.prices}>
           <View style={styles.price}>
             <Text style={styles.caption}>
-              Reference{asset ? ` (${asset.quoteAsset})` : ""}
+              Starting price{asset ? ` (${asset.quoteAsset})` : ""}
             </Text>
             <Text
               style={styles.amount}
@@ -97,7 +97,7 @@ export function PriceAlertRow({
           />
           <View style={styles.price}>
             <Text style={styles.caption}>
-              Observed{asset ? ` (${asset.quoteAsset})` : ""}
+              Price at alert{asset ? ` (${asset.quoteAsset})` : ""}
             </Text>
             <Text
               style={styles.amount}
