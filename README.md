@@ -17,7 +17,7 @@ The bottom tabs appear in this order: **Markets → Signals → Alerts → Profi
 
 A new profile starts with an empty watchlist. Signals and the empty Markets watchlist suggest up to ten USDT pairs ranked by 24-hour quote volume. Following a suggestion requires a user action.
 
-Light and dark appearance use a preference saved on the current device. Profile's **Manage watchlist** link opens followed pairs across all quote currencies and clears the search filter.
+The app icon uses the same gold K mark as the splash screen. Native launcher-icon changes take effect in a newly generated build; Expo Go retains its own installed launcher icon. Light and dark appearance use a preference saved on the current device. Profile's **Manage watchlist** link opens followed pairs across all quote currencies and clears the search filter.
 
 ## Setup
 
