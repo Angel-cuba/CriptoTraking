@@ -4,6 +4,11 @@ Kripto is a cryptocurrency tracker built with Expo, React Native and TypeScript.
 
 The app does not execute trades, manage wallets or hold funds. Price movements, signal labels and activity categories describe market data.
 
+<p align="center">
+  <img src="assets/images/markets-preview.jpg" width="240" alt="Kripto watchlist on the iPhone 17 Pro simulator" />
+  <img src="assets/images/analysis-preview.jpg" width="240" alt="Kripto asset analysis with hourly candles, moving averages and volume" />
+</p>
+
 ## Screens
 
 The bottom tabs appear in this order: **Markets → Signals → Alerts → Profile**.
@@ -234,7 +239,7 @@ npx expo install --check
 npx expo-doctor
 ```
 
-Market-list and shared-analysis changes have passed iOS/Android Hermes and static-web exports during development. The latest shared price-formatting and chart-axis refinement also passed an iOS export. The commands are:
+Market-list, shared-analysis and SDK 57 patch changes have passed iOS/Android Hermes and static-web exports during development. The commands are:
 
 ```bash
 npx expo export --platform ios --output-dir dist/ios --max-workers 2
