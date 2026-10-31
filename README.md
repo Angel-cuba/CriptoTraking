@@ -10,9 +10,9 @@ The bottom tabs appear in this order: **Markets → Signals → Alerts → Profi
 
 | Screen | Behavior |
 | --- | --- |
-| Markets | Start with the personal watchlist and open All markets in a full-screen catalog to search spot pairs, filter by quote currency, sort by name or 24h change, and follow or unfollow pairs. |
-| Signals | View hourly SMA5/SMA10 crossovers for followed pairs and expand their explanations, averages and timestamps. |
-| Alerts | Inspect price-movement history, filter upward/downward events, pause monitoring and enable price notifications. |
+| Markets | Start with the personal watchlist, browse the full-screen All markets catalog, search/filter/sort spot pairs, follow or unfollow them, and tap a row to open asset analysis. |
+| Signals | View hourly SMA5/SMA10 readings for followed pairs and tap an available reading to open its result, explanation, averages, timestamps and historical chart. |
+| Alerts | View the latest ten price alerts, load more, filter upward/downward events, inspect saved events with historical charts, pause monitoring and enable price notifications. |
 | Profile | Edit the display name, review watchlist activity and pair count, open Markets to manage followed pairs, change appearance, configure signal alerts and sign out. |
 
 A new profile starts with an empty watchlist. Signals and the empty Markets watchlist suggest up to ten USDT pairs ranked by 24-hour quote volume. Following a suggestion requires a user action.
@@ -53,7 +53,7 @@ Enable email/password authentication in the Supabase project. Kripto uses the ex
 | `watchlist` | Array of followed spot-pair symbols. |
 | `updated_at` | Last profile update. |
 
-The app loads the existing profile or creates a missing row after sign-in. It does not apply database migrations. Row Level Security must restrict profile reads, inserts and updates to `auth.uid() = id`; client-side route protection is not a substitute for those policies.
+The app loads the existing profile or creates a missing row after sign-in. The repository relies on an existing database and does not include a schema migration or provision tables and policies. Row Level Security must restrict profile reads, inserts and updates to `auth.uid() = id`; client-side route protection is not a substitute for those policies.
 
 If Supabase requires email confirmation, confirm the email and return to Login. Registration opens Profile immediately only when Supabase returns a session. A complete mobile confirmation-link callback is not implemented.
 
@@ -139,13 +139,25 @@ Price monitoring evaluates followed pairs independently of hourly signals:
 
 Monitoring is initially enabled; price notifications are initially disabled. Pausing alerts does not stop Markets from refreshing.
 
+Alerts initially displays the ten most recent events, ordered by observation receipt time. **Show 10 more** reveals the next page, or the remaining count when fewer than ten are left. Selecting All, Up or Down returns the visible count to ten. This display limit is separate from the 100-event storage limit. Opening and closing an event detail retains the selected filter and visible count.
+
 ## Asset analysis
 
-Tapping a row in My watchlist or All markets opens an analysis modal with up to 24 closed hourly candles, SMA5/SMA10 and base-asset volume from Binance. The last ticker price and rolling 24h statistics keep their own source time, separate from the latest closed candle and chart load time.
+Markets, Signals and Alerts share a full-screen analysis view with up to 24 closed hourly candles, SMA5/SMA10 overlays and base-asset volume from Binance. Charts use `react-native-gifted-charts` with `react-native-svg`.
 
-Chart history loads when the detail opens, with a 10-second deadline and a one-minute in-memory cache bounded to 20 entries. Manual refresh bypasses the fresh cache; request failures retain previously loaded candles. Chart requests share the catalog's provider rate-limit window. Closing the detail cancels its request, and returning to All markets retains the catalog's filters and scroll position. Charts load as a separate web chunk when opened.
+| Opened from | Detail content and time window |
+| --- | --- |
+| My watchlist / All markets | The selected ticker snapshot and rolling 24h statistics, plus the latest closed hourly candles and their OHLC, volume and averages. Ticker source time, candle time and chart load time are shown separately. |
+| Signals | The selected reading's original result, explanation, SMA values, closed-candle time and check time. The chart ends at that reading's closed candle. Saved readings and refresh failures keep their status visible. |
+| Alerts | The saved reference price, observed price, percentage movement, observation/receipt/creation times and notification status. The chart includes only candles closed by the event's source time, excluding the later close of an hour that was still open when the event occurred. |
 
-Signals opens that same detail anchored to the selected reading's closed candle. Alerts opens the saved reference, observed price, movement and notification status, with hourly candles closed by the event's source time. Current tickers and rolling 24h statistics are not presented as historical event values. The history cache separates latest and historical windows; refreshing a historical chart keeps its original cutoff. Opening a detail does not recalculate stored signals or replay notifications. Alert filters and pagination remain mounted beneath the modal. Missing catalog metadata leaves the saved symbol and event available without guessing its base or quote currency.
+Historical signal and alert details do not display current ticker prices or rolling 24h statistics as event values. Missing catalog metadata leaves the saved symbol and event available without guessing its base or quote currency. An alert's price-movement trigger remains separate from an SMA crossover.
+
+Detail prices, averages and alert-row prices share a formatter with up to ten significant digits. Nonzero values below `0.0000001` use scientific notation. Chart-axis precision follows the displayed price range so neighboring labels remain distinct in flat markets; its reserved width accounts for label length and system text scale. Detail timestamps include the year and seconds in UTC.
+
+Chart history loads when the detail opens, with a 10-second deadline and a one-minute in-memory cache bounded to 20 entries. Latest and historical windows have separate cache entries. Manual refresh bypasses the fresh cache while retaining a historical event's original cutoff. Request failures preserve any previously loaded chart and the selected event's original data. Chart requests share the catalog's provider rate-limit window.
+
+Closing the detail cancels its request. Returning to All markets retains the catalog's filters and scroll position; returning to Alerts retains its filter and visible count. Opening or refreshing a detail does not update stored signal readings, change alert references or replay notifications. The analysis view loads as a separate web chunk when opened.
 
 ## Hourly signals and notifications
 
@@ -194,12 +206,12 @@ Paused, stale or failed market data does not produce a fresh calculation. A matc
 | --- | --- |
 | `app/(auth)/` | Login and registration routes. |
 | `app/(tabs)/` | Markets, Signals, Alerts and Profile routes. |
-| `src/components/` | Shared forms, controls, market rows and expandable signal views. |
+| `src/components/` | Shared forms, controls, market/signal/alert rows, analysis modals and charts. |
 | `src/context/` | Session, profile, theme, shared market snapshots and notifications. |
 | `src/hooks/` | Screen access, market-list filters and ranking, and signal/activity lifecycles. |
 | `src/api/signalApi.ts` | Pure SMA crossover calculation. |
 | `src/services/` | API requests, calculations, local storage and notification delivery. |
-| `src/lib/` | Supabase client, session storage and theme definitions. |
+| `src/lib/` | Supabase client, session storage, theme definitions and shared price/status presentation. |
 | `src/types/` | Shared data contracts. |
 
 ## Validation
@@ -211,7 +223,7 @@ npx expo install --check
 npx expo-doctor
 ```
 
-The current market-list implementation also passes iOS/Android Hermes and static-web exports:
+Market-list and shared-analysis changes have passed iOS/Android Hermes and static-web exports during development. The latest shared price-formatting and chart-axis refinement also passed an iOS export. The commands are:
 
 ```bash
 npx expo export --platform ios --output-dir dist/ios --max-workers 2
@@ -221,19 +233,29 @@ npx expo export --platform web --output-dir dist/web --max-workers 2
 
 The generated `dist/` output is ignored by Git. These checks validate JavaScript and asset bundling; device interaction and installation checks are listed separately below. A local Android debug build also compiled successfully and was installed on the Pixel 8 emulator; its generated native files remain ignored. Manual review on the Pixel 8 confirmed that the app opens and navigates through Markets and All markets with the unmodified Expo Router package.
 
-The iPhone 17 Pro workflow has been checked for persisted sessions and appearance, loading real followed pairs, expandable signal details, watchlist navigation, activity persistence and price-alert history. The full-screen catalog, its options panel and all three change periods have been visually reviewed, including light and dark appearance. Catalog search was checked with the software keyboard, including its Search key dismissing the keyboard. Manual review also confirmed swipe scrolling and retaining the position after closing and reopening the catalog. Increasing system text size while the catalog is open now remeasures its content, keeping filter labels and explanatory text readable without reopening it. Controlled regression checks have exercised cancellation, partial failures/timeouts, rate limits, cache migration, account isolation and duplicate-notification prevention.
+The iPhone 17 Pro workflow has been checked for persisted sessions and appearance, loading real followed pairs, signal analysis modals, watchlist navigation, activity persistence and price-alert history. The full-screen catalog, its options panel and all three change periods have been visually reviewed, including light and dark appearance. Catalog search was checked with the software keyboard, including its Search key dismissing the keyboard. Manual review also confirmed swipe scrolling and retaining the position after closing and reopening the catalog. Increasing system text size while the catalog is open now remeasures its content, keeping filter labels and explanatory text readable without reopening it. Controlled regression checks have exercised cancellation, partial failures/timeouts, rate limits, cache migration, account isolation and duplicate-notification prevention.
 
 The authenticated web catalog has been checked for scrolling and position restoration, normalized pair search, quote filters, ranking, all three change periods, empty-search recovery and independent watchlist filters. Escape closes the options panel before closing the catalog. The reviewed mobile-width viewport had no horizontal page overflow. Manual iPhone review confirmed that pull-to-refresh shows an indicator, completes and leaves both lists usable.
 
 Market-list regression checks cover independent view filters, captured rankings with live prices, catalog reopen state, options-first Back handling, empty/error states, rapid follow guards, row layouts across all three periods and four text scales, and scroll-position conversion when row height changes. They also check that system text-size changes remount the content without replacing its filter model or losing the saved row position. Refresh checks cover the manual indicator lifecycle, no indicator for automatic or other-view refreshes, pause/loading/rate-limit guards and cleanup after a rejected reload. Manual Pixel 8 review confirmed that Back closes catalog options before closing the catalog, searching for SOL with the software keyboard and clearing the query works, and pull-to-refresh completes in both My watchlist and All markets.
 
-These checks do not establish end-to-end RLS isolation, full Android interaction coverage, production readiness or guaranteed OS banner delivery. There is no committed `npm test` suite.
+The shared analysis view has been visually checked on the iPhone 17 Pro from Markets, Signals and Alerts, including historical event times and returning to the underlying view. The latest precision refinement was also inspected in the SOL/USDT market detail. Controlled checks cover historical cutoff requests, excluding future candle closes, separating cache windows, cancellation and late responses, preserving saved events after request failures, missing metadata, and distinct price/axis labels for small values and flat markets. These regression checks were run with local scripts outside the repository.
 
-A manual walkthrough is to sign in, open Markets, open All markets, follow a pair and close the catalog to see it in the watchlist. Set different filters in each view, reopen the catalog and check that its selections and position are retained. Inspect Signals and its details, review Alerts, and open Profile's activity and Manage watchlist link. Use a demo account for changes to account data; an alert is not expected on every refresh.
+These checks do not establish end-to-end RLS isolation, full Android interaction coverage, production readiness or guaranteed OS banner delivery. Android interaction review of the new Signals/Alerts analysis view remains unverified. There is no committed `npm test` suite.
+
+A manual walkthrough:
+
+1. Sign in with a demo account and open Markets. In All markets, follow a pair and close the catalog to see it in My watchlist.
+2. Set different filters in each view. Open an asset detail, close it and reopen the catalog to check retained selections and scroll position.
+3. Open Signals and tap an available reading. Inspect the original result, SMA values, candle time and check time alongside its historical chart.
+4. Open Alerts, choose a direction filter and use Show more when available. Open an event and distinguish its saved prices and source time from the chart load time; closing the detail retains the filter and visible count.
+5. Open Profile, review watchlist activity, edit or cancel the display name, use Manage watchlist and change appearance. Restart the app to inspect session and appearance persistence.
+
+Use a demo account for changes to account data. Signals needs enough closed candles; an alert is not expected on every refresh.
 
 ## Limits and troubleshooting
 
-There is no background worker, remote push service, trading execution, wallet integration. Android and standalone builds, fresh-clone installation and two-account database isolation still need end-to-end verification. A mobile email-confirmation callback remains a separate feature.
+There is no background worker, remote push service, trading execution or wallet integration. Standalone release builds, fresh-clone installation and two-account database isolation still need end-to-end verification. A mobile email-confirmation callback is not implemented.
 
 | Symptom | Check |
 | --- | --- |
