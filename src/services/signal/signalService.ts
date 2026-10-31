@@ -1,4 +1,8 @@
-import { calculateSignal, type SignalResult } from "@/src/api/signalApi";
+import {
+  calculateSignal,
+  InsufficientSignalHistoryError,
+  type SignalResult,
+} from "@/src/api/signalApi";
 import { getBinanceData } from "@/src/services/market/marketService";
 import { MarketRateLimitError } from "@/src/services/market/binanceTransport";
 
@@ -54,9 +58,11 @@ export async function getSignals(
             } catch (failure) {
               if (controller.signal.aborted) return;
               failures[symbol] =
-                failure instanceof Error
+                failure instanceof InsufficientSignalHistoryError
                   ? failure.message
-                  : "Hourly reading unavailable.";
+                  : failure instanceof MarketRateLimitError
+                    ? "Updates are temporarily limited. Try again later."
+                    : "Could not update this pair. Try again.";
               if (failure instanceof MarketRateLimitError) rateLimited = true;
             }
           }),
@@ -64,14 +70,11 @@ export async function getSignals(
         interrupted,
       ]);
       if (signal.aborted) throw new Error("Signal request cancelled.");
-    } catch (failure) {
+    } catch {
       if (signal.aborted) throw new Error("Signal request cancelled.");
       for (const symbol of batch) {
         if (!readings.has(symbol) && !failures[symbol]) {
-          failures[symbol] =
-            failure instanceof Error
-              ? failure.message
-              : "Hourly reading unavailable.";
+          failures[symbol] = "The update took too long. Try again.";
         }
       }
     } finally {

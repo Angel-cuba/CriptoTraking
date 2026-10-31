@@ -72,6 +72,13 @@ function SignalsContent({ userId }: { userId: string }) {
     () => new Map(signals.map((item) => [item.symbol, item])),
     [signals],
   );
+  // Snapshots only change after a successful load; retain that membership during retries.
+  const unavailableSymbols = market.snapshot
+    ? symbols.filter((symbol) => !assets.has(symbol))
+    : [];
+  const visibleSymbols = symbols.filter((symbol) =>
+    market.snapshot ? assets.has(symbol) : readings.has(symbol),
+  );
   const {
     processSignals,
     ready: notificationsReady,
@@ -82,7 +89,8 @@ function SignalsContent({ userId }: { userId: string }) {
   const [selectedDetail, setSelectedDetail] =
     useState<AssetDetailSelection | null>(null);
   const [pendingSymbol, setPendingSymbol] = useState<string | null>(null);
-  const following = useRef(false);
+  const [showUnavailable, setShowUnavailable] = useState(false);
+  const changingWatchlist = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -93,7 +101,7 @@ function SignalsContent({ userId }: { userId: string }) {
         setScreenFocused(false);
         setSelectedDetail(null);
       };
-    }, []),
+    }, [setSelectedDetail]),
   );
 
   useEffect(() => {
@@ -127,37 +135,36 @@ function SignalsContent({ userId }: { userId: string }) {
     processSignals,
   ]);
 
-  async function followPair(symbol: string) {
+  async function changeWatchlist(symbol: string, remove = false) {
     if (
       !profile ||
       saving ||
       profileLoading ||
-      following.current ||
-      market.stale ||
-      market.paused ||
-      market.error
+      changingWatchlist.current ||
+      (remove && !profile.watchlist.includes(symbol)) ||
+      (!remove && (market.stale || market.paused || market.error))
     )
       return;
-    following.current = true;
+    changingWatchlist.current = true;
     setPendingSymbol(symbol);
     try {
       await toggleWatchlist(symbol);
     } finally {
-      following.current = false;
+      changingWatchlist.current = false;
       setPendingSymbol(null);
     }
   }
 
   const refreshDisabled =
     available === null ||
-    symbols.length === 0 ||
+    available.length === 0 ||
     profileLoading ||
     market.paused ||
     market.retryAt !== null;
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <FlatList
-        data={symbols}
+        data={visibleSymbols}
         keyExtractor={(symbol) => symbol}
         style={styles.content}
         contentContainerStyle={{
@@ -178,6 +185,12 @@ function SignalsContent({ userId }: { userId: string }) {
                       ? "Loading watchlist…"
                       : "Watchlist unavailable"}
                 </Text>
+                {unavailableSymbols.length > 0 ? (
+                  <Text style={styles.body}>
+                    {visibleSymbols.length} available · {unavailableSymbols.length}{" "}
+                    unavailable
+                  </Text>
+                ) : null}
               </View>
               <ActionButton
                 title="Refresh"
@@ -244,11 +257,7 @@ function SignalsContent({ userId }: { userId: string }) {
             symbol={symbol}
             asset={assets.get(symbol)}
             signal={readings.get(symbol)}
-            failure={
-              market.snapshot && !assets.has(symbol)
-                ? "Pair unavailable in the current market catalog."
-                : failures[symbol]
-            }
+            failure={failures[symbol]}
             loading={loading && assets.has(symbol)}
             cached={!freshSymbols.includes(symbol)}
             onOpen={() => {
@@ -267,7 +276,7 @@ function SignalsContent({ userId }: { userId: string }) {
           />
         )}
         ListEmptyComponent={
-          profile ? (
+          profile && symbols.length === 0 ? (
             <MarketSuggestions
               assets={market.snapshot?.assets ?? []}
               pendingSymbol={pendingSymbol}
@@ -279,16 +288,62 @@ function SignalsContent({ userId }: { userId: string }) {
                 market.paused ||
                 Boolean(market.error)
               }
-              onFollow={(symbol) => void followPair(symbol)}
+              onFollow={(symbol) => void changeWatchlist(symbol)}
             />
-          ) : !profileLoading ? (
+          ) : !profile && !profileLoading ? (
             <Text style={styles.empty}>
               Your watchlist is unavailable. Retry loading your profile.
+            </Text>
+          ) : profile && symbols.length > 0 && !market.loading ? (
+            <Text style={styles.empty}>
+              {unavailableSymbols.length > 0
+                ? "No signals available for your followed pairs. Review unavailable pairs below or manage your watchlist."
+                : "Readings will appear when market data is available. Try refreshing market data."}
             </Text>
           ) : null
         }
         ListFooterComponent={
           <View style={styles.footer}>
+            {unavailableSymbols.length > 0 ? (
+              <View style={styles.unavailable}>
+                <View style={styles.headingRow}>
+                  <Text accessibilityRole="header" style={styles.sectionTitle}>
+                    Unavailable · {unavailableSymbols.length}
+                  </Text>
+                  <ActionButton
+                    title={showUnavailable ? "Hide" : "Review"}
+                    accessibilityLabel={
+                      showUnavailable
+                        ? "Hide unavailable pairs"
+                        : "Review unavailable pairs"
+                    }
+                    secondary
+                    onPress={() => setShowUnavailable((shown) => !shown)}
+                  />
+                </View>
+                {showUnavailable ? (
+                  <>
+                    <Text style={styles.body}>
+                      These pairs are absent from the last loaded catalog. They
+                      stay in your watchlist until you remove them.
+                    </Text>
+                    {unavailableSymbols.map((symbol) => (
+                      <View key={symbol} style={styles.headingRow}>
+                        <Text style={styles.unavailableSymbol}>{symbol}</Text>
+                        <ActionButton
+                          title="Remove"
+                          accessibilityLabel={`Remove ${symbol} from watchlist`}
+                          secondary
+                          loading={pendingSymbol === symbol}
+                          disabled={saving || profileLoading || !profile}
+                          onPress={() => void changeWatchlist(symbol, true)}
+                        />
+                      </View>
+                    ))}
+                  </>
+                ) : null}
+              </View>
+            ) : null}
             <Link
               href={{ pathname: "/markets", params: { scope: "watchlist" } }}
               style={styles.link}
@@ -329,6 +384,22 @@ const createStyles = (colors: ThemeColors) =>
     issue: { gap: 8 },
     empty: { color: colors.muted, fontSize: 14, lineHeight: 21, padding: 20 },
     footer: { padding: 20, gap: 14 },
+    unavailable: {
+      padding: 14,
+      gap: 12,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.surface,
+    },
+    sectionTitle: { flex: 1, color: colors.text, fontSize: 15, fontWeight: "600" },
+    unavailableSymbol: {
+      flex: 1,
+      minWidth: 100,
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: "600",
+    },
     link: {
       color: colors.primary,
       fontSize: 14,

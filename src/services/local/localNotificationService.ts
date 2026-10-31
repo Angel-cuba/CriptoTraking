@@ -1,3 +1,5 @@
+import { getSignalNotificationCopy } from "@/src/lib/assetPresentation";
+import { getCachedMarketSymbol } from "@/src/services/market/marketCatalogService";
 import type { AssetSignal } from "@/src/services/signal/signalService";
 import * as Notifications from "expo-notifications";
 import { AppState, Platform } from "react-native";
@@ -126,13 +128,17 @@ export async function sendSignalNotification(
   isCurrent: () => boolean,
 ): Promise<void> {
   if (!notificationsSupported || !isCurrent()) return;
+  const copy = getSignalNotificationCopy(
+    signal,
+    getCachedMarketSymbol(signal.symbol),
+  );
+  if (!copy) return;
   await prepareNotificationChannel("signals");
   if (!isCurrent()) return;
   const identifier = await Notifications.scheduleNotificationAsync({
     identifier: `${kind}.${userId}.${signal.symbol}.${signal.timestamp}.${signal.type}`,
     content: {
-      title: `${signal.symbol} · ${signal.type}`,
-      body: signal.reason,
+      ...copy,
       sound: "default",
       data: {
         kind,

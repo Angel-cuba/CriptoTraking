@@ -9,6 +9,13 @@ export type SignalResult = {
   sma10: number;
 };
 
+export class InsufficientSignalHistoryError extends Error {
+  constructor() {
+    super("Not enough hourly history to analyze this pair yet.");
+    this.name = "InsufficientSignalHistoryError";
+  }
+}
+
 function average(prices: number[], period: number): number {
   return prices.slice(-period).reduce((sum, price) => sum + price, 0) / period;
 }
@@ -21,7 +28,7 @@ export function calculateSignal(
     .filter((candle) => candle.closeTime < now)
     .sort((left, right) => left.openTime - right.openTime);
   if (closed.length < 11)
-    throw new Error("At least 11 closed hourly candles are required.");
+    throw new InsufficientSignalHistoryError();
 
   const prices = closed.map((candle, index) => {
     if (

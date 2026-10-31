@@ -9,10 +9,12 @@ export default function PriceChart({
   candles,
   quote,
   base,
+  showIndicators = false,
 }: {
   candles: AssetCandle[];
   quote: string;
   base: string;
+  showIndicators?: boolean;
 }) {
   const { colors } = useAppTheme();
   const { fontScale } = useWindowDimensions();
@@ -33,9 +35,11 @@ export default function PriceChart({
     const values = visible.flatMap((item, index) => [
       item.low,
       item.high,
-      ...Object.values(averages[index]).filter(
-        (value): value is number => value !== undefined,
-      ),
+      ...(showIndicators
+        ? Object.values(averages[index]).filter(
+            (value): value is number => value !== undefined,
+          )
+        : []),
     ]);
     const low = Math.min(...values);
     const high = Math.max(...values);
@@ -79,7 +83,7 @@ export default function PriceChart({
       axisDigits,
       axisLabels,
     };
-  }, [candles, colors]);
+  }, [candles, colors, showIndicators]);
   // Use the same gutter for candles, averages and volume, including larger system text.
   const axisWidth = Math.ceil(
     Math.max(58, ...chart.axisLabels.map((label) => label.length * 6 + 8)) *
@@ -98,7 +102,6 @@ export default function PriceChart({
       month: "short",
       hour: "2-digit",
       minute: "2-digit",
-      timeZone: "UTC",
     });
   return (
     <View
@@ -106,16 +109,18 @@ export default function PriceChart({
       style={{ gap: 10 }}
     >
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
-        <Text style={{ color: colors.primary, fontSize: 12 }}>━━ SMA5</Text>
-        <Text style={{ color: colors.accent, fontSize: 12 }}>━━ SMA10</Text>
-        <Text style={{ color: colors.muted, fontSize: 12 }}>
-          1h · Closed candles
-        </Text>
+        {showIndicators ? (
+          <>
+            <Text style={{ color: colors.primary, fontSize: 12 }}>━━ 5-hour average</Text>
+            <Text style={{ color: colors.accent, fontSize: 12 }}>━━ 10-hour average</Text>
+          </>
+        ) : null}
+        <Text style={{ color: colors.muted, fontSize: 12 }}>Price · {quote}</Text>
       </View>
       <View
         accessible
         accessibilityRole="image"
-        accessibilityLabel={`Hourly candlestick chart, ${chart.visible.length} closed candles. First close ${formatAssetPrice(first.close)}, last close ${formatAssetPrice(last.close)} ${quote}. Rising candles are green; falling candles are red. Moving averages are listed below.`}
+        accessibilityLabel={`Hourly candlestick chart, ${chart.visible.length} completed hours. First close ${formatAssetPrice(first.close)}, last close ${formatAssetPrice(last.close)} ${quote}. Rising candles are green; falling candles are red.${showIndicators ? " Lines show 5-hour and 10-hour average closing prices." : ""}`}
       >
         <View
           accessibilityElementsHidden
@@ -154,9 +159,13 @@ export default function PriceChart({
               disableScroll
               disablePress
               isAnimated={false}
-              showLine={chart.averages.some((item) => item.sma5 !== undefined)}
-              lineData={chart.line5}
+              showLine={
+                showIndicators &&
+                chart.averages.some((item) => item.sma5 !== undefined)
+              }
+              lineData={showIndicators ? chart.line5 : undefined}
               lineData2={
+                showIndicators &&
                 chart.averages.some((item) => item.sma10 !== undefined)
                   ? chart.line10
                   : undefined
@@ -183,7 +192,7 @@ export default function PriceChart({
           ) : null}
         </View>
       </View>
-      <Text style={{ color: colors.muted, fontSize: 11 }}>Volume · {base}</Text>
+      <Text style={{ color: colors.muted, fontSize: 11 }}>Amount traded · {base}</Text>
       <View
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
@@ -220,8 +229,9 @@ export default function PriceChart({
         }}
       >
         <Text style={textStyle}>{time(first.openTime)}</Text>
-        <Text style={textStyle}>{time(last.openTime)} UTC</Text>
+        <Text style={textStyle}>{time(last.openTime)}</Text>
       </View>
+      <Text style={{ color: colors.muted, fontSize: 11 }}>Times shown in your local time zone.</Text>
     </View>
   );
 }

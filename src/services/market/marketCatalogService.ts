@@ -10,6 +10,10 @@ const CATALOG_TTL_MS = 5 * 60 * 1000;
 let cachedCatalog: MarketSymbol[] | null = null;
 let catalogExpiresAt = 0;
 
+export function getCachedMarketSymbol(symbol: string): MarketSymbol | undefined {
+  return cachedCatalog?.find((asset) => asset.symbol === symbol);
+}
+
 export async function getMarketSnapshot(
   signal?: AbortSignal,
 ): Promise<MarketSnapshot> {
