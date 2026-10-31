@@ -9,10 +9,8 @@ import {
 } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
-import {
-  getMarketSnapshot,
-  MarketRateLimitError,
-} from "@/src/services/market/marketCatalogService";
+import { getMarketSnapshot } from "@/src/services/market/marketCatalogService";
+import { MarketRateLimitError } from "@/src/services/market/binanceTransport";
 import { compareMarketPrices } from "@/src/services/market/marketMovementService";
 import type {
   MarketMovement,

@@ -1,10 +1,4 @@
-let retryAt = 0;
-export class BinanceRateLimitError extends Error {
-  constructor() {
-    super("Provider limit reached. Try again later.");
-    this.name = "BinanceRateLimitError";
-  }
-}
+import { fetchMarketData } from "./binanceTransport";
 
 export type MarketCandle = {
   openTime: number;
@@ -46,7 +40,6 @@ export async function getBinanceData(
   symbol: string,
   signal?: AbortSignal,
 ): Promise<MarketCandle[]> {
-  if (Date.now() < retryAt) throw new BinanceRateLimitError();
   const controller = new AbortController();
   const abort = () => controller.abort();
   if (signal?.aborted) controller.abort();
@@ -54,24 +47,11 @@ export async function getBinanceData(
   const timeout = setTimeout(abort, 10_000);
 
   try {
-    const response = await fetch(
-      `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=1h&limit=20`,
-      { signal: controller.signal },
+    const data = await fetchMarketData(
+      `/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=1h&limit=20`,
+      controller.signal,
     );
-    if (response.status === 429 || response.status === 418) {
-      const seconds = Number(response.headers.get("Retry-After"));
-      retryAt =
-        Date.now() +
-        (Number.isFinite(seconds) && seconds > 0
-          ? Math.max(seconds * 1000, 1000)
-          : response.status === 418
-            ? 120_000
-            : 60_000);
-      throw new BinanceRateLimitError();
-    }
-    if (!response.ok)
-      throw new Error(`Market request failed (${response.status}).`);
-    return parseCandles(await response.json());
+    return parseCandles(data);
   } finally {
     clearTimeout(timeout);
     signal?.removeEventListener("abort", abort);

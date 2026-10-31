@@ -1,5 +1,5 @@
 import { calculateSignal } from "@/src/api/signalApi";
-import { fetchMarketData } from "./marketCatalogService";
+import { fetchMarketData } from "./binanceTransport";
 
 export type AssetCandle = {
   openTime: number;

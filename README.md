@@ -129,7 +129,7 @@ Empty watchlist views distinguish no followed pairs, filters with no matches and
 - Prices refresh every 60 seconds while the authenticated app is active, including from other main tabs.
 - Backgrounding pauses polling and cancels the current request. Foreground resume requests a fresh snapshot.
 - Requests have a 15-second deadline. Failed refreshes retain the last snapshot; data becomes stale after two minutes.
-- HTTP 429/418 responses establish a provider retry window.
+- HTTP 429/418 responses establish one provider retry window shared by Markets, Signals and asset charts.
 - Pull-to-refresh requests a manual price update in either list. A failed request also offers Retry. Automatic updates do not activate the pull-to-refresh indicator.
 
 Markets offers **24h**, **Last update** and **Both** change views. The initial selection is 24h. Its percentage comes from Binance's rolling summary. Last update compares consecutive accepted prices no more than two minutes apart and shows the comparison interval. The first observation, including after foreground resume, establishes a new reference and displays **Waiting**. Neither percentage is the reference used for price alerts.
@@ -183,7 +183,7 @@ The engine requests 20 hourly candles, excludes unfinished candles and requires 
 
 Tapping a reading opens the shared analysis modal with its saved result, closed-candle timestamp, separate check time and averages in the pair's quote currency. Small prices retain significant digits rather than rounding to zero.
 
-Requests run in groups of at most three, with a 10-second limit per market request and a 15-second batch deadline. A failed or timed-out pair does not discard completed readings. Failed pairs retain their saved reading when available. A batch timeout or provider rate limit stops later batches in that refresh; retry checks them again. Unavailable catalog pairs are identified separately.
+Requests run in groups of at most three, with a 10-second limit per market request and a 15-second batch deadline. Their HTTP transport and provider retry window are shared with the market catalog and charts. A failed or timed-out pair does not discard completed readings. Failed pairs retain their saved reading when available. A batch timeout or provider rate limit stops later batches in that refresh; retry checks them again. Unavailable catalog pairs are identified separately.
 
 Only fresh readings are considered for signal notifications while Signals is focused and the app is active. Enable signal alerts in Profile; price notifications have a separate switch in Alerts.
 
@@ -220,7 +220,7 @@ Paused, stale or failed market data does not produce a fresh calculation. A matc
 | `src/context/` | Session, profile, theme, shared market snapshots and notifications. |
 | `src/hooks/` | Screen access, market-list filters and ranking, and signal/activity lifecycles. |
 | `src/api/signalApi.ts` | Pure SMA crossover calculation. |
-| `src/services/` | API requests, calculations, local storage and notification delivery. |
+| `src/services/` | Shared Binance transport and rate-limit handling, API requests, calculations, local storage and notification delivery. |
 | `src/lib/` | Supabase client, session storage, theme definitions and shared price/status presentation. |
 | `src/types/` | Shared data contracts. |
 | `supabase/migrations/` | Initial profile schema and per-user database access policies. |
@@ -250,7 +250,7 @@ The authenticated web catalog has been checked for scrolling and position restor
 
 Market-list regression checks cover independent view filters, captured rankings with live prices, catalog reopen state, options-first Back handling, empty/error states, rapid follow guards, row layouts across all three periods and four text scales, and scroll-position conversion when row height changes. They also check that system text-size changes remount the content without replacing its filter model or losing the saved row position. Refresh checks cover the manual indicator lifecycle, no indicator for automatic or other-view refreshes, pause/loading/rate-limit guards and cleanup after a rejected reload. Manual Pixel 8 review confirmed that Back closes catalog options before closing the catalog, searching for SOL with the software keyboard and clearing the query works, and pull-to-refresh completes in both My watchlist and All markets.
 
-The shared analysis view has been visually checked on the iPhone 17 Pro from Markets, Signals and Alerts, including historical event times and returning to the underlying view. The latest precision refinement was also inspected in the SOL/USDT market detail. Controlled checks cover historical cutoff requests, excluding future candle closes, separating cache windows, cancellation and late responses, preserving saved events after request failures, missing metadata, and distinct price/axis labels for small values and flat markets. These regression checks were run with local scripts outside the repository.
+The shared analysis view has been visually checked on the iPhone 17 Pro from Markets, Signals and Alerts, including historical event times and returning to the underlying view. The latest precision refinement was also inspected in the SOL/USDT market detail. Controlled checks cover historical cutoff requests, excluding future candle closes, separating cache windows, cancellation and late responses, preserving saved events after request failures, missing metadata, and distinct price/axis labels for small values and flat markets. Shared-transport checks also cover cross-flow 429/418 blocking, numeric/date Retry-After headers, cooldown expiry, cancellation and concurrent responses that must not shorten an existing wait. These regression checks were run with local scripts outside the repository.
 
 These checks do not establish end-to-end RLS isolation, full Android interaction coverage, production readiness or guaranteed OS banner delivery. Android interaction review of the new Signals/Alerts analysis view remains unverified. There is no committed `npm test` suite.
 

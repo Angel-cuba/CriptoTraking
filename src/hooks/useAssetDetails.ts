@@ -3,7 +3,7 @@ import {
   getCachedAssetHistory,
   type AssetHistory,
 } from "@/src/services/market/assetHistoryService";
-import { MarketRateLimitError } from "@/src/services/market/marketCatalogService";
+import { MarketRateLimitError } from "@/src/services/market/binanceTransport";
 import { useEffect, useState } from "react";
 
 export function useAssetDetails(symbol: string, asOf?: number) {

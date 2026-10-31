@@ -1,8 +1,6 @@
 import { calculateSignal, type SignalResult } from "@/src/api/signalApi";
-import {
-  BinanceRateLimitError,
-  getBinanceData,
-} from "@/src/services/market/marketService";
+import { getBinanceData } from "@/src/services/market/marketService";
+import { MarketRateLimitError } from "@/src/services/market/binanceTransport";
 
 export type AssetSignal = SignalResult & { symbol: string; checkedAt?: number };
 type SignalBatch = {
@@ -59,7 +57,7 @@ export async function getSignals(
                 failure instanceof Error
                   ? failure.message
                   : "Hourly reading unavailable.";
-              if (failure instanceof BinanceRateLimitError) rateLimited = true;
+              if (failure instanceof MarketRateLimitError) rateLimited = true;
             }
           }),
         ),
