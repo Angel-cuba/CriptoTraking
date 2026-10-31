@@ -118,7 +118,7 @@ Signing out does not erase account-scoped market history. Another account uses s
 
 Markets opens **My watchlist** across all quote currencies. **All markets** opens a full-screen catalog with compact rows and no bottom tabs. Search, quote, sorting and change-period selections are independent in the two views. Closing the catalog returns to the existing watchlist view; reopening it retains its selections and scroll position while Markets remains mounted. These view preferences are not persisted across app restarts.
 
-Both views share the same price snapshots and saved watchlist. Following or unfollowing a pair updates both views; browsing or clearing filters does not change saved entries. Catalog rows allow extra height for **Both** and larger system text, while watchlist rows retain their card layout.
+Both views share the same price snapshots and saved watchlist. Row prices use the same significant-digit format as asset details and price-alert notifications. Following or unfollowing a pair updates both views; browsing or clearing filters does not change saved entries. Catalog rows allow extra height for **Both** and larger system text, while watchlist rows retain their card layout.
 
 The catalog combines active spot symbols from Binance `/api/v3/exchangeInfo` with rolling summaries from `/api/v3/ticker/24hr`. Catalog metadata is cached in memory for five minutes.
 
@@ -163,7 +163,7 @@ Markets, Signals and Alerts share a full-screen analysis view with up to 24 clos
 
 Historical signal and alert details do not display current ticker prices or rolling 24h statistics as event values. Missing catalog metadata leaves the saved symbol and event available without guessing its base or quote currency. An alert's price-movement trigger remains separate from an SMA crossover.
 
-Detail prices, averages and alert-row prices share a formatter with up to ten significant digits. Nonzero values below `0.0000001` use scientific notation. Chart-axis precision follows the displayed price range so neighboring labels remain distinct in flat markets; its reserved width accounts for label length and system text scale. Detail timestamps include the year and seconds in UTC.
+Market-row prices, detail prices, averages, alert-row prices and price-notification values share a formatter with up to ten significant digits. Nonzero values below `0.0000001` use scientific notation. Chart-axis precision follows the displayed price range so neighboring labels remain distinct in flat markets; its reserved width accounts for label length and system text scale. Detail timestamps include the year and seconds in UTC.
 
 Chart history loads when the detail opens, with a 10-second deadline and a one-minute in-memory cache bounded to 20 entries. Latest and historical windows have separate cache entries. Manual refresh bypasses the fresh cache while retaining a historical event's original cutoff. Request failures preserve any previously loaded chart and the selected event's original data. Chart requests share the catalog's provider rate-limit window.
 

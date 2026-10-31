@@ -1,3 +1,4 @@
+import { formatAssetPrice } from "@/src/lib/assetPresentation";
 import { useAppTheme, useThemeStyles } from "@/src/context/ThemeContext";
 import { CORNER_RADIUS, type ThemeColors } from "@/src/lib/theme";
 import { SymbolView } from "expo-symbols";
@@ -27,14 +28,6 @@ export function getMarketRowHeight(
       : 72
     : MARKET_ROW_HEIGHT;
   return Math.ceil(height * Math.max(1, fontScale));
-}
-
-function formatPrice(price: number): string {
-  if (price < 0.000001) return price.toExponential(2);
-  return price.toLocaleString("en-US", {
-    minimumFractionDigits: price >= 1 ? 2 : 0,
-    maximumFractionDigits: price >= 1 ? 2 : 8,
-  });
 }
 
 function ChangeValue({
@@ -112,7 +105,7 @@ export const MarketRow = memo(function MarketRow({
   const styles = useThemeStyles(createStyles);
   const { fontScale } = useWindowDimensions();
   const { ticker } = asset;
-  const amount = ticker ? formatPrice(ticker.price) : "Unavailable";
+  const amount = ticker ? formatAssetPrice(ticker.price) : "Unavailable";
   const elapsed = movement
     ? (movement.receivedAt - movement.previousReceivedAt) / 1000
     : 0;

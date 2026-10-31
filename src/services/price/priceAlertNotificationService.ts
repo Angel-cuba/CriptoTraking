@@ -1,3 +1,4 @@
+import { formatAssetPrice } from "@/src/lib/assetPresentation";
 import {
   clearLocalNotifications,
   getNotificationPermission,
@@ -27,15 +28,11 @@ export async function sendPriceAlertNotification(
   if (!canSend()) return "skipped";
   const pair = asset ? `${asset.baseAsset}/${asset.quoteAsset}` : event.symbol;
   const quote = asset ? ` ${asset.quoteAsset}` : " (pair quote units)";
-  const format = (price: number) =>
-    price < 0.0000001
-      ? price.toExponential(4)
-      : price.toLocaleString("en-US", { maximumSignificantDigits: 10 });
   const identifier = await Notifications.scheduleNotificationAsync({
     identifier: `kripto.price.${event.id}`,
     content: {
       title: `${pair} ${event.direction === "up" ? "up" : "down"} ${Math.abs(event.changePercent).toFixed(2)}%`,
-      body: `Since reference: ${format(event.referencePrice)} to ${format(event.price)}${quote}.`,
+      body: `Since reference: ${formatAssetPrice(event.referencePrice)} to ${formatAssetPrice(event.price)}${quote}.`,
       sound: "default",
       data: {
         kind: "price-alert",
