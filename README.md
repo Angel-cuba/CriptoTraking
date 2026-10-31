@@ -23,18 +23,20 @@ Light and dark appearance use a preference saved on the current device. Profile'
 
 Use a supported Node.js 24 release, Git and npm. Development checks have run with Node 24.16.0. The runtime is [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/), React Native 0.86 and React 19.2.
 
-From the repository root:
+From the repository root, install dependencies and prepare the local environment file:
 
 ```bash
 npm ci
-npm start
+cp .env.example .env
 ```
+
+Fill in `.env` and configure the Supabase schema below before starting the app. If a local `.env` already exists, keep it and compare its variable names with [.env.example](.env.example) instead of copying over it.
 
 The installation commands use the committed `package-lock.json`. When adding an Expo package, use `npx expo install <package> --npm` to retain SDK compatibility and update the same lockfile.
 
 ### Environment and Supabase
 
-Create an ignored local `.env` containing your own project URL and client publishable key:
+The committed `.env.example` contains empty placeholders. Set your own project URL and client publishable key in the ignored local `.env`:
 
 ```dotenv
 EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
@@ -53,9 +55,17 @@ Enable email/password authentication in the Supabase project. Kripto uses the ex
 | `watchlist` | Array of followed spot-pair symbols. |
 | `updated_at` | Last profile update. |
 
-The app loads the existing profile or creates a missing row after sign-in. The repository relies on an existing database and does not include a schema migration or provision tables and policies. Row Level Security must restrict profile reads, inserts and updates to `auth.uid() = id`; client-side route protection is not a substitute for those policies.
+For a new Supabase database, run [001_create_profiles.sql](supabase/migrations/001_create_profiles.sql) once in the Supabase SQL editor before signing in. It creates `public.profiles`, the allowed `risk_profile` values and Row Level Security policies restricting reads, inserts, updates and deletes to the authenticated user's own row.
+
+This is an initial migration, not an idempotent update. If `public.profiles` already exists, including in the shared SignalDesk project, compare its schema and policies with the migration instead of rerunning it. The app does not execute migrations automatically; after sign-in it loads the user's existing profile or creates a missing row. Client-side route protection is not a substitute for database policies.
 
 If Supabase requires email confirmation, confirm the email and return to Login. Registration opens Profile immediately only when Supabase returns a session. A complete mobile confirmation-link callback is not implemented.
+
+After configuring the environment and database, start the development server:
+
+```bash
+npm start
+```
 
 ### Local simulator and browser
 
@@ -213,6 +223,7 @@ Paused, stale or failed market data does not produce a fresh calculation. A matc
 | `src/services/` | API requests, calculations, local storage and notification delivery. |
 | `src/lib/` | Supabase client, session storage, theme definitions and shared price/status presentation. |
 | `src/types/` | Shared data contracts. |
+| `supabase/migrations/` | Initial profile schema and per-user database access policies. |
 
 ## Validation
 
